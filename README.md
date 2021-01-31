@@ -1,5 +1,8 @@
 # AzureDevOpsAnalyzer
 
+[![Build Status](https://github.com/mikefourie/AzureDevOpsAnalyzer/workflows/.NET/badge.svg)](https://github.com/mikefourie/AzureDevOpsAnalyzer/actions)
+
+
 e.g. AzureDevOpsAnalyzer.exe -t YOURPAT -u https://dev.azure.com/YOURORG/YOURPROJECT
 
   -v, --verbose        (Default: true) Set output to verbose messages. Default is true

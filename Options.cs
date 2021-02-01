@@ -7,7 +7,7 @@ namespace AzureDevOpsAnalyzer
 
     public class Options
     {
-        [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages. Default is true", Default = true)]
+        [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages", Default = true)]
         public bool Verbose { get; set; }
 
         [Option('c', "commitcount", Required = false, HelpText = "Set the maximum number of commits to retrieve", Default = 100000)]
@@ -34,13 +34,13 @@ namespace AzureDevOpsAnalyzer
         [Option('f', "filter", Required = false, HelpText = "Set the repository names to filter out. Comma separated regular expression")]
         public string Filter { get; set; }
 
-        [Option('n', "skipcommits", Required = false, HelpText = "Set whether to skip collecting commits. Default is false", Default = false)]
+        [Option('n', "skipcommits", Required = false, HelpText = "Set whether to skip collecting commits", Default = false)]
         public bool SkipCommits { get; set; }
 
-        [Option('m', "skippushes", Required = false, HelpText = "Set whether to skip collecting pushes. Default is false", Default = false)]
+        [Option('m', "skippushes", Required = false, HelpText = "Set whether to skip collecting pushes", Default = false)]
         public bool SkipPushes { get; set; }
 
-        [Option('s', "skipbuilds", Required = false, HelpText = "Set whether to skip collecting builds. Default is false", Default = false)]
+        [Option('s', "skipbuilds", Required = false, HelpText = "Set whether to skip collecting builds", Default = false)]
         public bool SkipBuilds { get; set; }
     }
 }

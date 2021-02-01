@@ -33,7 +33,7 @@
 
             if (result.Tag == ParserResultType.NotParsed)
             {
-                // Help text requested, or parsing failed. Exit.
+                // Help text requested, or parsing failed.
                 return;
             }
 
@@ -52,7 +52,6 @@
                     ConsoleWrite("Applying Filters");
                     string[] repositoryExclusions = programOptions.Filter.Split(",");
                     repositories.value = new List<Value>();
-
                     foreach (var repo in allrepositories.value.OrderBy(r => r.name))
                     {
                         bool exclude = false;
@@ -88,20 +87,12 @@
 
                 foreach (var repo in repositories.value)
                 {
-                    sb.Append(projectUrl + ",");
-                    sb.Append(repo.defaultBranch + ",");
-                    sb.Append(repo.id + ",");
-                    sb.Append(repo.name + ",");
-                    sb.Append(repo.project + ",");
-                    sb.Append(repo.remoteUrl + ",");
-                    sb.Append(repo.sshUrl + ",");
-                    sb.Append(repo.url + ",");
-                    sb.Append(repo.webUrl + ",");
+                    sb.Append(projectUrl + "," + repo.defaultBranch + "," + repo.id + "," + repo.name + "," + repo.project + ",");
+                    sb.Append(repo.remoteUrl + "," + repo.sshUrl + "," + repo.url + "," + repo.webUrl + ",");
                     sb.AppendLine();
                 }
 
                 programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-repositories.csv");
-
                 ConsoleWrite($"Writing {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
 
@@ -136,24 +127,11 @@
                             sb.Append(currentCulture.CompareInfo.IndexOf(commit.committer.email, programOptions.InternalIdentifier, CompareOptions.IgnoreCase) >= 0 ? true + "," : false + ",");
                         }
 
-                        sb.Append(commit.author.date.ToLocalTime() + ",");
-                        sb.Append(commit.author.email + ",");
-                        sb.Append(commit.author.name + ",");
-                        sb.Append(commit.changeCounts.Add + ",");
-                        sb.Append(commit.changeCounts.Delete + ",");
-                        sb.Append(commit.changeCounts.Edit + ",");
-                        sb.Append(commit.commitId + ",");
-                        sb.Append(commit.committer.date.ToLocalTime() + ",");
-                        sb.Append(commit.committer.date.ToLocalTime().Year + ",");
-                        sb.Append(commit.committer.date.ToLocalTime().Month + ",");
-                        sb.Append(commit.committer.date.ToLocalTime().Day + ",");
-                        sb.Append(commit.committer.date.ToLocalTime().DayOfWeek + ",");
+                        sb.Append(commit.author.date.ToLocalTime() + "," + commit.author.email + "," + commit.author.name + "," + commit.changeCounts.Add + ",");
+                        sb.Append(commit.changeCounts.Delete + "," + commit.changeCounts.Edit + "," + commit.commitId + "," + commit.committer.date.ToLocalTime() + ",");
+                        sb.Append(commit.committer.date.ToLocalTime().Year + "," + commit.committer.date.ToLocalTime().Month + "," + commit.committer.date.ToLocalTime().Day + "," + commit.committer.date.ToLocalTime().DayOfWeek + ",");
                         sb.Append(currentCulture.Calendar.GetWeekOfYear(commit.committer.date.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
-                        sb.Append(commit.committer.date.ToLocalTime().Hour + ",");
-                        sb.Append(commit.committer.email + ",");
-                        sb.Append(commit.committer.name + ",");
-                        sb.Append(commit.remoteUrl + ",");
-                        sb.Append($"\"{commit.comment}\"" + ",");
+                        sb.Append(commit.committer.date.ToLocalTime().Hour + "," + commit.committer.email + "," + commit.committer.name + "," + commit.remoteUrl + "," + $"\"{commit.comment}\"" + ",");
                         sb.AppendLine();
                     }
 
@@ -182,19 +160,10 @@
 
                     foreach (var push in allPushes)
                     {
-                        sb.Append(projectUrl + ",");
-                        sb.Append(push.repository.name + ",");
-                        sb.Append(push.pushId + ",");
-                        sb.Append(push.date.ToLocalTime() + ",");
-                        sb.Append(push.date.ToLocalTime().Year + ",");
-                        sb.Append(push.date.ToLocalTime().Month + ",");
-                        sb.Append(push.date.ToLocalTime().Day + ",");
-                        sb.Append(push.date.ToLocalTime().DayOfWeek + ",");
+                        sb.Append(projectUrl + "," + push.repository.name + "," + push.pushId + "," + push.date.ToLocalTime() + ",");
+                        sb.Append(push.date.ToLocalTime().Year + "," + push.date.ToLocalTime().Month + "," + push.date.ToLocalTime().Day + "," + push.date.ToLocalTime().DayOfWeek + ",");
                         sb.Append(currentCulture.Calendar.GetWeekOfYear(push.date.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
-                        sb.Append(push.date.ToLocalTime().Hour + ",");
-                        sb.Append(push.pushedBy.uniqueName + ",");
-                        sb.Append(push.pushedBy.displayName + ",");
-                        sb.Append(push.repository.remoteUrl + ",");
+                        sb.Append(push.date.ToLocalTime().Hour + "," + push.pushedBy.uniqueName + "," + push.pushedBy.displayName + "," + push.repository.remoteUrl + ",");
                         sb.AppendLine();
                     }
 
@@ -210,7 +179,6 @@
                     Builds builds = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?$top={programOptions.BuildCount}&api-version=6.0"));
                     ConsoleWrite($"\tRetrieved {builds.value.Count}");
                     allBuilds.AddRange(builds.value);
-
                     ConsoleWrite($"Building csv for {allBuilds.Count} builds");
                     sb.Clear();
                     if (firstProject)
@@ -221,24 +189,11 @@
                     foreach (var build in allBuilds)
                     {
                         TimeSpan buildDuration = build.finishTime - build.startTime;
-                        sb.Append(projectUrl + ",");
-                        sb.Append(build.id + ",");
-                        sb.Append(build.reason + ",");
-                        sb.Append(build.buildNumber + ",");
-                        sb.Append(build.definition.name + ",");
-                        sb.Append(build.result + ",");
-                        sb.Append(build.requestedFor.displayName + ",");
-                        sb.Append(build.repository.name + ",");
-                        sb.Append(build.startTime.ToLocalTime() + ",");
-                        sb.Append(build.startTime.ToLocalTime().Year + ",");
-                        sb.Append(build.startTime.ToLocalTime().Month + ",");
-                        sb.Append(build.startTime.ToLocalTime().Day + ",");
-                        sb.Append(build.startTime.ToLocalTime().DayOfWeek + ",");
+                        sb.Append(projectUrl + "," + build.id + "," + build.reason + "," + build.buildNumber + "," + build.definition.name + "," + build.result + ",");
+                        sb.Append(build.requestedFor.displayName + "," + build.repository.name + "," + build.startTime.ToLocalTime() + "," + build.startTime.ToLocalTime().Year + ",");
+                        sb.Append(build.startTime.ToLocalTime().Month + "," + build.startTime.ToLocalTime().Day + "," + build.startTime.ToLocalTime().DayOfWeek + ",");
                         sb.Append(currentCulture.Calendar.GetWeekOfYear(build.startTime.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
-                        sb.Append(build.startTime.ToLocalTime().Hour + ",");
-                        sb.Append(build.finishTime.ToLocalTime() + ",");
-                        sb.Append(build.queueTime.ToLocalTime() + ",");
-                        sb.Append(buildDuration.TotalMinutes.ToString("##") + ",");
+                        sb.Append(build.startTime.ToLocalTime().Hour + "," + build.finishTime.ToLocalTime() + "," + build.queueTime.ToLocalTime() + "," + buildDuration.TotalMinutes.ToString("##") + ",");
                         sb.AppendLine();
                     }
 
@@ -251,7 +206,7 @@
             }
 
             TimeSpan t = DateTime.Now - start;
-            ConsoleWrite($"Analysis Completed {t.TotalSeconds}s:{t.Milliseconds}ms");
+            ConsoleWrite($"Analysis Completed {t.TotalMinutes}m: {t.Seconds}s");
         }
 
         private static void WriteHeader()

@@ -31,8 +31,11 @@ namespace AzureDevOpsAnalyzer
         [Option('i', "identifier", Required = false, HelpText = "Set the internal identifier to match for commits")]
         public string InternalIdentifier { get; set; }
 
-        [Option('f', "filter", Required = false, HelpText = "Set the repository names to filter out. Comma separated regular expression")]
+        [Option('f', "filter", Required = false, HelpText = "Set the repository names to filter on. Comma separated regular expression")]
         public string Filter { get; set; }
+
+        [Option('e', "exclusion", Required = false, HelpText = "Set the Filter to exclude rather than include.", Default = false)]
+        public bool Exclusion { get; set; }
 
         [Option('n', "skipcommits", Required = false, HelpText = "Set whether to skip collecting commits", Default = false)]
         public bool SkipCommits { get; set; }
@@ -40,10 +43,13 @@ namespace AzureDevOpsAnalyzer
         [Option('m', "skippushes", Required = false, HelpText = "Set whether to skip collecting pushes", Default = false)]
         public bool SkipPushes { get; set; }
 
-        [Option('s', "skipbuilds", Required = false, HelpText = "Set whether to skip collecting builds", Default = false)]
+        [Option('s', "skipbuilds", Required = false, HelpText = "Set whether to skip collecting builds", Default = true)]
         public bool SkipBuilds { get; set; }
 
         [Option('r', "branch", Required = false, HelpText = "Set the branch to scan. Defaults to the default branch per repository")]
         public string Branch { get; set; }
+
+        [Option('l', "nomessages", Required = false, HelpText = "Set whether to skip saving commit messages", Default = false)]
+        public bool NoMessages { get; set; }
     }
 }

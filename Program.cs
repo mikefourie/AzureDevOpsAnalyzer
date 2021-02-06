@@ -55,14 +55,38 @@
                     foreach (var repo in allrepositories.value.OrderBy(r => r.name))
                     {
                         bool exclude = false;
-                        foreach (string exclusion in repositoryExclusions)
+                        foreach (string filter in repositoryExclusions)
                         {
-                            Match m = Regex.Match(repo.name, exclusion, RegexOptions.IgnoreCase);
+                            Match m = Regex.Match(repo.name, filter, RegexOptions.IgnoreCase);
                             if (m.Success)
                             {
-                                ConsoleWrite($"Removing {repo.name} per filter: {exclusion}");
-                                exclude = true;
-                                break;
+                                if (programOptions.Exclusion)
+                                {
+                                    ConsoleWrite($"Excluding {repo.name} per filter: {filter}");
+                                    exclude = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    ConsoleWrite($"Including {repo.name} per filter: {filter}");
+                                    exclude = false;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                if (programOptions.Exclusion)
+                                {
+                                    ConsoleWrite($"Including {repo.name} per filter: {filter}");
+                                    exclude = false;
+                                    break;
+                                }
+                                else
+                                {
+                                    ConsoleWrite($"Excluding {repo.name} per filter: {filter}");
+                                    exclude = true;
+                                    break;
+                                }
                             }
                         }
 
@@ -115,7 +139,7 @@
                         }
                         catch (Exception ex)
                         {
-                            ConsoleWrite($"\t{branchToScan} not found {ex.ToString()}");
+                            ConsoleWrite($"\t{branchToScan} not found {ex}");
                         }
                     }
 
@@ -141,11 +165,16 @@
                             sb.Append(currentCulture.CompareInfo.IndexOf(commit.committer.email, programOptions.InternalIdentifier, CompareOptions.IgnoreCase) >= 0 ? true + "," : false + ",");
                         }
 
-                        sb.Append(commit.author.date.ToLocalTime() + "," + commit.author.email + ",\"" + commit.author.name + "\"," + commit.changeCounts.Add + ",");
+                        sb.Append(commit.author.date.ToLocalTime() + ",\"" + commit.author.email + "\",\"" + commit.author.name + "\"," + commit.changeCounts.Add + ",");
                         sb.Append(commit.changeCounts.Delete + "," + commit.changeCounts.Edit + "," + commit.commitId + "," + commit.committer.date.ToLocalTime() + ",");
                         sb.Append(commit.committer.date.ToLocalTime().Year + "," + commit.committer.date.ToLocalTime().Month + "," + commit.committer.date.ToLocalTime().Day + "," + commit.committer.date.ToLocalTime().DayOfWeek + ",");
                         sb.Append(currentCulture.Calendar.GetWeekOfYear(commit.committer.date.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
-                        sb.Append(commit.committer.date.ToLocalTime().Hour + "," + commit.committer.email + ",\"" + commit.committer.name + "\"," + commit.remoteUrl + "," + $"\"{commit.comment}\"" + ",");
+                        sb.Append(commit.committer.date.ToLocalTime().Hour + "," + commit.committer.email + ",\"" + commit.committer.name + "\"," + commit.remoteUrl + ",");
+                        if (!programOptions.NoMessages)
+                        {
+                            sb.Append($"\"{commit.comment}\"" + ",");
+                        }
+
                         sb.AppendLine();
                     }
 

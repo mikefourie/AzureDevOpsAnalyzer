@@ -101,16 +101,29 @@
                     List<Commit> allCommits = new ();
                     foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
                     {
-                        ConsoleWrite($"Retrieving Commits {repo.name}");
-                        CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={repo.defaultBranch.Replace("refs/heads/", string.Empty)}&api-version=6.0"));
-                        allCommits.AddRange(commitHistory.value);
+                        string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch.Replace("refs/heads/", string.Empty) : programOptions.Branch;
+                        ConsoleWrite($"Retrieving Commits {repo.name} ({branchToScan})");
+                        try
+                        {
+                            CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&api-version=6.0"));
+                            foreach (Commit item in commitHistory.value)
+                            {
+                                item.branch = branchToScan;
+                            }
+
+                            allCommits.AddRange(commitHistory.value);
+                        }
+                        catch (Exception ex)
+                        {
+                            ConsoleWrite($"\t{branchToScan} not found {ex.ToString()}");
+                        }
                     }
 
                     ConsoleWrite($"Building csv for {allCommits.Count} commits");
                     sb.Clear();
                     if (firstProject)
                     {
-                        sb.AppendLine("projecturl,repository, isinternal, authordate,authoremail,authorname,add,delete,edit,commitid,committerdate,year,month,day,dayofweek,weekofyear,hour,committeremail,committername,remoteurl,comment");
+                        sb.AppendLine("projecturl,repository,branch,isinternal,authordate,authoremail,authorname,add,delete,edit,commitid,committerdate,year,month,day,dayofweek,weekofyear,hour,committeremail,committername,remoteurl,comment");
                     }
 
                     foreach (var commit in allCommits)
@@ -118,6 +131,7 @@
                         sb.Append(projectUrl + ",");
                         string[] urlParts = commit.remoteUrl.Split("/");
                         sb.Append(urlParts[6] + ",");
+                        sb.Append(commit.branch + ",");
                         if (string.IsNullOrEmpty(programOptions.InternalIdentifier))
                         {
                             sb.Append("true,");
@@ -127,11 +141,11 @@
                             sb.Append(currentCulture.CompareInfo.IndexOf(commit.committer.email, programOptions.InternalIdentifier, CompareOptions.IgnoreCase) >= 0 ? true + "," : false + ",");
                         }
 
-                        sb.Append(commit.author.date.ToLocalTime() + "," + commit.author.email + "," + commit.author.name + "," + commit.changeCounts.Add + ",");
+                        sb.Append(commit.author.date.ToLocalTime() + "," + commit.author.email + ",\"" + commit.author.name + "\"," + commit.changeCounts.Add + ",");
                         sb.Append(commit.changeCounts.Delete + "," + commit.changeCounts.Edit + "," + commit.commitId + "," + commit.committer.date.ToLocalTime() + ",");
                         sb.Append(commit.committer.date.ToLocalTime().Year + "," + commit.committer.date.ToLocalTime().Month + "," + commit.committer.date.ToLocalTime().Day + "," + commit.committer.date.ToLocalTime().DayOfWeek + ",");
                         sb.Append(currentCulture.Calendar.GetWeekOfYear(commit.committer.date.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
-                        sb.Append(commit.committer.date.ToLocalTime().Hour + "," + commit.committer.email + "," + commit.committer.name + "," + commit.remoteUrl + "," + $"\"{commit.comment}\"" + ",");
+                        sb.Append(commit.committer.date.ToLocalTime().Hour + "," + commit.committer.email + ",\"" + commit.committer.name + "\"," + commit.remoteUrl + "," + $"\"{commit.comment}\"" + ",");
                         sb.AppendLine();
                     }
 
@@ -145,25 +159,34 @@
                     List<Push> allPushes = new ();
                     foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
                     {
+                        string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
                         ConsoleWrite($"Retrieving Pushes {repo.name}");
-                        Pushes pushes = JsonSerializer.Deserialize<Pushes>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={repo.defaultBranch}&api-version=6.0"));
+                        Pushes pushes = JsonSerializer.Deserialize<Pushes>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&api-version=6.0"));
                         ConsoleWrite($"\tRetrieved {pushes.value.Count}");
-                        allPushes.AddRange(pushes.value);
+                        if (pushes.value.Count > 0)
+                        {
+                            foreach (Push item in pushes.value)
+                            {
+                                item.branch = branchToScan;
+                            }
+
+                            allPushes.AddRange(pushes.value);
+                        }
                     }
 
                     ConsoleWrite($"Building csv for {allPushes.Count} pushes");
                     sb.Clear();
                     if (firstProject)
                     {
-                        sb.AppendLine("projecturl,repository,pushid,pushdate,year,month,day,dayofweek,weekofyear,hour,uniquename,displayname,remoteurl");
+                        sb.AppendLine("projecturl,repository,branch,pushid,pushdate,year,month,day,dayofweek,weekofyear,hour,uniquename,displayname,remoteurl");
                     }
 
                     foreach (var push in allPushes)
                     {
-                        sb.Append(projectUrl + "," + push.repository.name + "," + push.pushId + "," + push.date.ToLocalTime() + ",");
+                        sb.Append(projectUrl + "," + push.repository.name + "," + push.branch + "," + push.pushId + "," + push.date.ToLocalTime() + ",");
                         sb.Append(push.date.ToLocalTime().Year + "," + push.date.ToLocalTime().Month + "," + push.date.ToLocalTime().Day + "," + push.date.ToLocalTime().DayOfWeek + ",");
                         sb.Append(currentCulture.Calendar.GetWeekOfYear(push.date.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
-                        sb.Append(push.date.ToLocalTime().Hour + "," + push.pushedBy.uniqueName + "," + push.pushedBy.displayName + "," + push.repository.remoteUrl + ",");
+                        sb.Append(push.date.ToLocalTime().Hour + ",\"" + push.pushedBy.uniqueName + "\",\"" + push.pushedBy.displayName + "\"," + push.repository.remoteUrl + ",");
                         sb.AppendLine();
                     }
 

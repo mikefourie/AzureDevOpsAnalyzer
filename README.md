@@ -5,7 +5,7 @@
 
 e.g. AzureDevOpsAnalyzer.exe -t YOURPAT -u https://dev.azure.com/YOURORG/YOURPROJECT
 
-  -v, --verbose        (Default: true) Set output to verbose messages.
+  -v, --verbose        (Default: true) Set output to verbose messages
 
   -c, --commitcount    (Default: 100000) Set the maximum number of commits to retrieve
 
@@ -23,11 +23,13 @@ e.g. AzureDevOpsAnalyzer.exe -t YOURPAT -u https://dev.azure.com/YOURORG/YOURPRO
 
   -f, --filter         Set the repository names to filter out. Comma separated regular expression
 
-  -n, --skipcommits    (Default: false) Set whether to skip collecting commits.
+  -n, --skipcommits    (Default: false) Set whether to skip collecting commits
 
-  -m, --skippushes     (Default: false) Set whether to skip collecting pushes.
+  -m, --skippushes     (Default: false) Set whether to skip collecting pushes
 
-  -s, --skipbuilds     (Default: false) Set whether to skip collecting builds.
+  -s, --skipbuilds     (Default: false) Set whether to skip collecting builds
+
+  -r, --branch         Set the branch to scan. Defaults to the default branch per repository
 
   --help               Display this help screen.
 

@@ -42,5 +42,8 @@ namespace AzureDevOpsAnalyzer
 
         [Option('s', "skipbuilds", Required = false, HelpText = "Set whether to skip collecting builds", Default = false)]
         public bool SkipBuilds { get; set; }
+
+        [Option('r', "branch", Required = false, HelpText = "Set the branch to scan. Defaults to the default branch per repository")]
+        public string Branch { get; set; }
     }
 }

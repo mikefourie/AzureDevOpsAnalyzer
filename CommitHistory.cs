@@ -45,6 +45,9 @@ namespace AzureDevOpsAnalyzer
         public ChangeCounts changeCounts { get; set; }
 
         public string remoteUrl { get; set; }
+
+        // Adding in branch for reporting
+        public string branch { get; set; }
     }
 
     public class CommitHistory

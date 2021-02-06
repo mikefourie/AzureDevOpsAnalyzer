@@ -38,6 +38,9 @@ namespace AzureDevOpsAnalyzer
         public int pushId { get; set; }
         public DateTime date { get; set; }
         public string url { get; set; }
+
+        // Adding in branch for reporting
+        public string branch { get; set; }
     }
 
     public class Pushes

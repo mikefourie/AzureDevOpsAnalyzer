@@ -119,23 +119,27 @@
                 programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-repositories.csv");
                 ConsoleWrite($"Writing {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
-
+                sb.Clear();
                 if (!programOptions.SkipCommits)
                 {
                     List<Commit> allCommits = new ();
                     foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
                     {
                         string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch.Replace("refs/heads/", string.Empty) : programOptions.Branch;
-                        ConsoleWrite($"Retrieving Commits {repo.name} ({branchToScan})");
+                        ConsoleWrite($"Retrieving Commits from {repo.name} ({branchToScan})");
                         try
                         {
-                            CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&api-version=6.0"));
-                            foreach (Commit item in commitHistory.value)
+                            CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=6.0"));
+                            if (commitHistory.value.Count > 0)
                             {
-                                item.branch = branchToScan;
-                            }
+                                foreach (Commit item in commitHistory.value)
+                                {
+                                    item.branch = branchToScan;
+                                }
 
-                            allCommits.AddRange(commitHistory.value);
+                                allCommits.AddRange(commitHistory.value);
+                                ConsoleWrite($"\tRetrieved {commitHistory.value.Count} from {repo.name}");
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -181,6 +185,7 @@
                     programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-commits.csv");
                     ConsoleWrite($"Writing {programOptions.OutputFile}");
                     File.AppendAllText(programOptions.OutputFile, sb.ToString());
+                    sb.Clear();
                 }
 
                 if (!programOptions.SkipPushes)
@@ -189,9 +194,8 @@
                     foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
                     {
                         string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
-                        ConsoleWrite($"Retrieving Pushes {repo.name}");
-                        Pushes pushes = JsonSerializer.Deserialize<Pushes>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&api-version=6.0"));
-                        ConsoleWrite($"\tRetrieved {pushes.value.Count}");
+                        ConsoleWrite($"Retrieving Pushes from {repo.name} ({branchToScan})");
+                        Pushes pushes = JsonSerializer.Deserialize<Pushes>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=6.0"));
                         if (pushes.value.Count > 0)
                         {
                             foreach (Push item in pushes.value)
@@ -200,6 +204,7 @@
                             }
 
                             allPushes.AddRange(pushes.value);
+                            ConsoleWrite($"\tRetrieved {pushes.value.Count} pushes from {repo.name}");
                         }
                     }
 
@@ -222,12 +227,13 @@
                     programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-pushes.csv");
                     ConsoleWrite($"Writing {programOptions.OutputFile}");
                     File.AppendAllText(programOptions.OutputFile, sb.ToString());
+                    sb.Clear();
                 }
 
                 if (!programOptions.SkipBuilds)
                 {
                     List<Build> allBuilds = new ();
-                    ConsoleWrite($"Retrieving Builds {projectName}");
+                    ConsoleWrite($"Retrieving Builds from {projectName}");
                     Builds builds = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?$top={programOptions.BuildCount}&api-version=6.0"));
                     ConsoleWrite($"\tRetrieved {builds.value.Count}");
                     allBuilds.AddRange(builds.value);
@@ -252,6 +258,46 @@
                     programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-builds.csv");
                     ConsoleWrite($"Writing {programOptions.OutputFile}");
                     File.AppendAllText(programOptions.OutputFile, sb.ToString());
+                    sb.Clear();
+                }
+
+                if (!programOptions.SkipPullRequests)
+                {
+                    List<PullRequest> allPullRequests = new ();
+                    ConsoleWrite($"Retrieving Pull Requests from {projectName}");
+                    foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
+                    {
+                        string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : programOptions.Branch;
+                        PullRequests pullRequests = JsonSerializer.Deserialize<PullRequests>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=6.0"));
+                        if (pullRequests.value.Count > 0)
+                        {
+                            ConsoleWrite($"\tRetrieved {pullRequests.value.Count} pull requests from {repo.name}");
+                            allPullRequests.AddRange(pullRequests.value);
+                        }
+                    }
+
+                    ConsoleWrite($"Building csv for {allPullRequests.Count} Pull Requests");
+                    sb.Clear();
+                    if (firstProject)
+                    {
+                        sb.AppendLine("projecturl,id,repository,targetrefname,reviewercount,mergestrategy,creationdate,closeddate,createdby,year,month,day,dayofweek,weekofyear,hour,totalhours,totaldays");
+                    }
+
+                    foreach (var pullRequest in allPullRequests)
+                    {
+                        TimeSpan pullRequestDuration = pullRequest.closedDate - pullRequest.creationDate;
+                        sb.Append(projectUrl + "," + pullRequest.pullRequestId + "," + pullRequest.repository.name + "," + pullRequest.targetRefName + "," + pullRequest.reviewers.Count + "," + pullRequest.completionOptions?.mergeStrategy + "," ?? string.Empty + ",");
+                        sb.Append(pullRequest.creationDate + "," + pullRequest.closedDate + "," + pullRequest.createdBy.displayName + ",");
+                        sb.Append(pullRequest.creationDate.ToLocalTime().Year + "," + pullRequest.creationDate.ToLocalTime().Month + "," + pullRequest.creationDate.ToLocalTime().Day + "," + pullRequest.creationDate.ToLocalTime().DayOfWeek + ",");
+                        sb.Append(currentCulture.Calendar.GetWeekOfYear(pullRequest.creationDate.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
+                        sb.Append(pullRequest.creationDate.ToLocalTime().Hour + "," + pullRequestDuration.TotalHours.ToString("#0") + "," + pullRequestDuration.TotalDays.ToString("#0"));
+                        sb.AppendLine();
+                    }
+
+                    programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-pullrequests.csv");
+                    ConsoleWrite($"Writing {programOptions.OutputFile}");
+                    File.AppendAllText(programOptions.OutputFile, sb.ToString());
+                    sb.Clear();
                 }
 
                 firstProject = false;

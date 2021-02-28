@@ -2,39 +2,45 @@
 
 [![Build Status](https://github.com/mikefourie/AzureDevOpsAnalyzer/workflows/.NET/badge.svg)](https://github.com/mikefourie/AzureDevOpsAnalyzer/actions)
 
-
 e.g. AzureDevOpsAnalyzer.exe -t YOURPAT -u https://dev.azure.com/YOURORG/YOURPROJECT
 
-  -v, --verbose        (Default: true) Set output to verbose messages
+  -v, --verbose             (Default: true) Set output to verbose messages
 
-  -c, --commitcount    (Default: 100000) Set the maximum number of commits to retrieve
+  -c, --commitcount         (Default: 100000) Set the maximum number of commits to retrieve
 
-  -p, --pushcount      (Default: 100000) Set the maximum number of commits to retrieve
+  -d, --fromDate            Set the minimum date to retrieve data for commits and pushes
 
-  -b, --buildcount     (Default: 5000) Set the maximum number of builds to retrieve
+  -p, --pushcount           (Default: 100000) Set the maximum number of commits to retrieve
 
-  -u, --project        Required. Set the Project Urls to scan. Comma separated
+  -b, --buildcount          (Default: 5000) Set the maximum number of builds to retrieve
 
-  -t, --token          Set personal access token to use
+  -g, --pullrequestcount    (Default: 5000) Set the maximum number of pull requests to retrieve
 
-  -o, --outputfile     Set name of the CSV file
+  -u, --project             Required. Set the Project Urls to scan. Comma separated
 
-  -i, --identifier     Set the internal identifier to match for commits
+  -t, --token               Set personal access token to use
 
-  -f, --filter         Set the repository names to filter on. Comma separated regular expression
+  -o, --outputfile          Set name of the CSV file
 
-  -e, --exclusion      (Default: false) Set the Filter to exclude rather than include.
+  -i, --identifier          Set the internal identifier to match for commits
 
-  -n, --skipcommits    (Default: false) Set whether to skip collecting commits
+  -f, --filter              Set the repository names to filter on. Comma separated regular expression
 
-  -m, --skippushes     (Default: false) Set whether to skip collecting pushes
+  -e, --exclusion           (Default: false) Set the Filter to exclude rather than include.
 
-  -s, --skipbuilds     (Default: true) Set whether to skip collecting builds
+  -n, --skipcommits         (Default: false) Set whether to skip collecting commits
 
-  -r, --branch         Set the branch to scan. Defaults to the default branch per repository
+  -m, --skippushes          (Default: false) Set whether to skip collecting pushes
 
-  -l, --nomessages     (Default: false) Set whether to skip saving commit messages
+  -s, --skipbuilds          (Default: true) Set whether to skip collecting builds
 
-  --help               Display this help screen.
+  -k, --skippullrequests    (Default: false) Set whether to skip collecting pull requests
 
-  --version            Display version information.
+  -r, --branch              Set the branch to scan. Defaults to the default branch per repository for Commits and
+                            Pushes.
+
+  -l, --nomessages          (Default: false) Set whether to skip saving commit messages
+
+  --help                    Display this help screen.
+
+  --version                 Display version information.

@@ -20,7 +20,6 @@
         {
             CultureInfo currentCulture = CultureInfo.CurrentCulture;
             StringBuilder sb = new ();
-            Repositories allrepositories = new ();
             Repositories repositories = new ();
             DateTime start = DateTime.Now;
 
@@ -46,7 +45,7 @@
                 string filePrefix = projectUrls.Length > 1 ? "multi" : projectName;
                 ConsoleWrite($"---------------- Project {projectName} ----------------");
                 ConsoleWrite("Retrieving Repositories");
-                allrepositories = JsonSerializer.Deserialize<Repositories>(InvokeRestCall(projectUrl, "_apis/git/repositories?api-version=6.0"));
+                Repositories allrepositories = JsonSerializer.Deserialize<Repositories>(InvokeRestCall(projectUrl, "_apis/git/repositories?api-version=6.0"));
                 if (!string.IsNullOrEmpty(programOptions.Filter))
                 {
                     ConsoleWrite("Applying Filters");
@@ -320,10 +319,10 @@
         {
             using (HttpClient client = new ())
             {
-                string creds = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($":{programOptions.Token}"));
+                string creds = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{programOptions.Token}"));
                 client.BaseAddress = new Uri($"{baseaddress}/");
                 client.DefaultRequestHeaders.Accept.Clear();
-                client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", creds);
                 var response = client.GetAsync(url).Result;
                 string content = response.Content.ReadAsStringAsync().Result;

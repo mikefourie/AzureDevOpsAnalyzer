@@ -49,8 +49,8 @@ public class Options
     [Option('m', "skippushes", Required = false, HelpText = "Set whether to skip collecting pushes", Default = false)]
     public bool SkipPushes { get; set; }
 
-    [Option('s', "skipbuilds", Required = false, HelpText = "Set whether to skip collecting builds", Default = true)]
-    public bool SkipBuilds { get; set; }
+    [Option('s', "skipbuilds", Required = false, HelpText = "Set whether to skip collecting builds", Default = "true")]
+    public string SkipBuilds { get; set; }
 
     [Option('k', "skippullrequests", Required = false, HelpText = "Set whether to skip collecting pull requests", Default = false)]
     public bool SkipPullRequests { get; set; }

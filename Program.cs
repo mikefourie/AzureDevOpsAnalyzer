@@ -15,7 +15,7 @@ public class Program
     {
         CultureInfo currentCulture = CultureInfo.CurrentCulture;
         StringBuilder sb = new ();
-        Repositories repositories = new ();
+        Repositories repositories = new () { value = new List<Value>() };
         DateTime start = DateTime.Now;
 
         WriteHeader();
@@ -23,7 +23,8 @@ public class Program
                 .WithParsed(o =>
                 {
                     programOptions = o;
-                });
+                })
+                .WithNotParsed(HandleParseError);
 
         if (result.Tag == ParserResultType.NotParsed)
         {
@@ -44,49 +45,52 @@ public class Program
             if (!string.IsNullOrEmpty(programOptions.Filter))
             {
                 ConsoleWrite("Applying Filters");
-                string[] repositoryExclusions = programOptions.Filter.Split(",");
-                repositories.value = new List<Value>();
+                string[] repositoryFilters = programOptions.Filter.Split(",");
                 foreach (var repo in allrepositories.value.OrderBy(r => r.name))
                 {
-                    bool exclude = false;
-                    foreach (string filter in repositoryExclusions)
+                    // if we are excluding repos
+                    if (programOptions.Exclusion)
                     {
-                        Match m = Regex.Match(repo.name, filter, RegexOptions.IgnoreCase);
-                        if (m.Success)
+                        bool exclude = false;
+
+                        foreach (string filter in repositoryFilters)
                         {
-                            if (programOptions.Exclusion)
+                            Match m = Regex.Match(repo.name, filter, RegexOptions.IgnoreCase);
+                            if (m.Success)
                             {
+                                // we have a match so exclude and break to save cycles
                                 ConsoleWrite($"Excluding {repo.name} per filter: {filter}");
                                 exclude = true;
-                                break;
-                            }
-                            else
-                            {
-                                ConsoleWrite($"Including {repo.name} per filter: {filter}");
-                                exclude = false;
                                 break;
                             }
                         }
-                        else
+
+                        if (!exclude)
                         {
-                            if (programOptions.Exclusion)
-                            {
-                                ConsoleWrite($"Including {repo.name} per filter: {filter}");
-                                exclude = false;
-                                break;
-                            }
-                            else
-                            {
-                                ConsoleWrite($"Excluding {repo.name} per filter: {filter}");
-                                exclude = true;
-                                break;
-                            }
+                            repositories.value.Add(repo);
                         }
                     }
-
-                    if (!exclude)
+                    else
                     {
-                        repositories.value.Add(repo);
+                        bool include = false;
+
+                        // we are including based on filter
+                        foreach (string filter in repositoryFilters)
+                        {
+                            Match m = Regex.Match(repo.name, filter, RegexOptions.IgnoreCase);
+                            if (m.Success)
+                            {
+                                // we have a match so exclude and break to save cycles
+                                ConsoleWrite($"Including {repo.name} per filter: {filter}");
+                                include = true;
+                                break;
+                            }
+                        }
+
+                        if (include)
+                        {
+                            repositories.value.Add(repo);
+                        }
                     }
                 }
 
@@ -94,10 +98,24 @@ public class Program
             }
             else
             {
-                repositories = allrepositories;
+                foreach (var repo in allrepositories.value.OrderBy(r => r.name))
+                {
+                    repositories.value.Add(repo);
+                }
             }
 
-            ConsoleWrite($"Retrieved {repositories.count}");
+            Console.WriteLine("\n-------------------------------------------");
+            Console.WriteLine($"{repositories.value.Count} Repositories to report on");
+            Console.WriteLine("-------------------------------------------");
+
+            foreach (var repo in repositories.value)
+            {
+                Console.WriteLine($"\t{repo.name}");
+            }
+
+            Console.WriteLine("-------------------------------------------");
+            Console.WriteLine($"{repositories.value.Count} Repositories to report on");
+            Console.WriteLine("-------------------------------------------\n");
             if (firstProject)
             {
                 sb.AppendLine("projecturl,defaultBranch,id,name,project,remoteUrl,sshUrl,url,webUrl");
@@ -123,16 +141,24 @@ public class Program
                     ConsoleWrite($"Retrieving Commits from {repo.name} ({branchToScan})");
                     try
                     {
-                        CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=6.0"));
-                        if (commitHistory.value.Count > 0)
+                        string commitJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=6.0");
+                        if (!string.IsNullOrEmpty(commitJson))
                         {
-                            foreach (Commit item in commitHistory.value)
+                            CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(commitJson);
+                            if (commitHistory.value.Count > 0)
                             {
-                                item.branch = branchToScan;
-                            }
+                                foreach (Commit item in commitHistory.value)
+                                {
+                                    item.branch = branchToScan;
+                                }
 
-                            allCommits.AddRange(commitHistory.value);
-                            ConsoleWrite($"\tRetrieved {commitHistory.value.Count} from {repo.name}");
+                                allCommits.AddRange(commitHistory.value);
+                                ConsoleWrite($"\tRetrieved {commitHistory.value.Count} from {repo.name}");
+                            }
+                        }
+                        else
+                        {
+                            ConsoleWrite($"\tWARNING: Unable to retrieve commit history from {repo.name}");
                         }
                     }
                     catch (Exception ex)
@@ -189,16 +215,24 @@ public class Program
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
                     ConsoleWrite($"Retrieving Pushes from {repo.name} ({branchToScan})");
-                    Pushes pushes = JsonSerializer.Deserialize<Pushes>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=6.0"));
-                    if (pushes.value.Count > 0)
+                    string pushesJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=6.0");
+                    if (!string.IsNullOrEmpty(pushesJson))
                     {
-                        foreach (Push item in pushes.value)
+                        Pushes pushes = JsonSerializer.Deserialize<Pushes>(pushesJson);
+                        if (pushes.value.Count > 0)
                         {
-                            item.branch = branchToScan;
-                        }
+                            foreach (Push item in pushes.value)
+                            {
+                                item.branch = branchToScan;
+                            }
 
-                        allPushes.AddRange(pushes.value);
-                        ConsoleWrite($"\tRetrieved {pushes.value.Count} pushes from {repo.name}");
+                            allPushes.AddRange(pushes.value);
+                            ConsoleWrite($"\tRetrieved {pushes.value.Count} pushes from {repo.name}");
+                        }
+                    }
+                    else
+                    {
+                        ConsoleWrite($"\tWARNING: Unable to retrieve pushes from {repo.name}");
                     }
                 }
 
@@ -224,7 +258,7 @@ public class Program
                 sb.Clear();
             }
 
-            if (!programOptions.SkipBuilds)
+            if (!Convert.ToBoolean(programOptions.SkipBuilds))
             {
                 List<Build> allBuilds = new ();
                 ConsoleWrite($"Retrieving Builds from {projectName}");
@@ -262,11 +296,19 @@ public class Program
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : programOptions.Branch;
-                    PullRequests pullRequests = JsonSerializer.Deserialize<PullRequests>(InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=6.0"));
-                    if (pullRequests.value.Count > 0)
+                    string pullRequestJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=6.0");
+                    if (!string.IsNullOrEmpty(pullRequestJson))
                     {
-                        ConsoleWrite($"\tRetrieved {pullRequests.value.Count} pull requests from {repo.name}");
-                        allPullRequests.AddRange(pullRequests.value);
+                        PullRequests pullRequests = JsonSerializer.Deserialize<PullRequests>(pullRequestJson);
+                        if (pullRequests.value.Count > 0)
+                        {
+                            ConsoleWrite($"\tRetrieved {pullRequests.value.Count} pull requests from {repo.name}");
+                            allPullRequests.AddRange(pullRequests.value);
+                        }
+                    }
+                    else
+                    {
+                        ConsoleWrite($"\tWARNING: Unable to retrieve pull requests from {repo.name}");
                     }
                 }
 
@@ -299,6 +341,14 @@ public class Program
 
         TimeSpan t = DateTime.Now - start;
         ConsoleWrite($"Analysis Completed {t.TotalMinutes}m: {t.Seconds}s");
+    }
+
+    private static void HandleParseError(IEnumerable<Error> errs)
+    {
+        foreach (var error in errs)
+        {
+            ConsoleWrite($"Error = {error.Tag}");
+        }
     }
 
     private static void WriteHeader()

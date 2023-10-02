@@ -269,14 +269,14 @@ public class Program
                 sb.Clear();
                 if (firstProject)
                 {
-                    sb.AppendLine("projecturl,id,reason,buildNumber,definition,result,requestedfor,repository,starttime,year,month,day,dayofweek,weekofyear,hour,finishtime,queuetime,totalminutes");
+                    sb.AppendLine("projecturl,id,reason,buildNumber,definition,result,requestedfor,uniqueName,repository,starttime,year,month,day,dayofweek,weekofyear,hour,finishtime,queuetime,totalminutes");
                 }
 
                 foreach (var build in allBuilds)
                 {
                     TimeSpan buildDuration = build.finishTime - build.startTime;
                     sb.Append(projectUrl + "," + build.id + "," + build.reason + "," + build.buildNumber + "," + build.definition.name + "," + build.result + ",");
-                    sb.Append(build.requestedFor.displayName + "," + build.repository.name + "," + build.startTime.ToLocalTime() + "," + build.startTime.ToLocalTime().Year + ",");
+                    sb.Append(build.requestedFor.displayName + "," + build.requestedFor.uniqueName + "," + build.repository.name + "," + build.startTime.ToLocalTime() + "," + build.startTime.ToLocalTime().Year + ",");
                     sb.Append(build.startTime.ToLocalTime().Month + "," + build.startTime.ToLocalTime().Day + "," + build.startTime.ToLocalTime().DayOfWeek + ",");
                     sb.Append(currentCulture.Calendar.GetWeekOfYear(build.startTime.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
                     sb.Append(build.startTime.ToLocalTime().Hour + "," + build.finishTime.ToLocalTime() + "," + build.queueTime.ToLocalTime() + "," + buildDuration.TotalMinutes.ToString("##") + ",");
@@ -316,14 +316,14 @@ public class Program
                 sb.Clear();
                 if (firstProject)
                 {
-                    sb.AppendLine("projecturl,id,repository,targetrefname,reviewercount,mergestrategy,creationdate,closeddate,createdby,year,month,day,dayofweek,weekofyear,hour,totalhours,totaldays");
+                    sb.AppendLine("projecturl,id,repository,targetrefname,reviewercount,mergestrategy,creationdate,closeddate,createdby,uniqueName,year,month,day,dayofweek,weekofyear,hour,totalhours,totaldays");
                 }
 
                 foreach (var pullRequest in allPullRequests)
                 {
                     TimeSpan pullRequestDuration = pullRequest.closedDate - pullRequest.creationDate;
                     sb.Append(projectUrl + "," + pullRequest.pullRequestId + "," + pullRequest.repository.name + "," + pullRequest.targetRefName + "," + pullRequest.reviewers.Count + "," + pullRequest.completionOptions?.mergeStrategy + "," ?? string.Empty + ",");
-                    sb.Append(pullRequest.creationDate + "," + pullRequest.closedDate + "," + pullRequest.createdBy.displayName + ",");
+                    sb.Append(pullRequest.creationDate + "," + pullRequest.closedDate + "," + pullRequest.createdBy.displayName + "," + pullRequest.createdBy.uniqueName + ",");
                     sb.Append(pullRequest.creationDate.ToLocalTime().Year + "," + pullRequest.creationDate.ToLocalTime().Month + "," + pullRequest.creationDate.ToLocalTime().Day + "," + pullRequest.creationDate.ToLocalTime().DayOfWeek + ",");
                     sb.Append(currentCulture.Calendar.GetWeekOfYear(pullRequest.creationDate.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
                     sb.Append(pullRequest.creationDate.ToLocalTime().Hour + "," + pullRequestDuration.TotalHours.ToString("#0") + "," + pullRequestDuration.TotalDays.ToString("#0"));

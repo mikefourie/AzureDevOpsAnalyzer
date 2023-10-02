@@ -12,7 +12,4 @@
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
 	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="Objects\" />
-	</ItemGroup>
 </Project>

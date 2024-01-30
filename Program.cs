@@ -123,7 +123,7 @@ public class Program
 
             foreach (var repo in repositories.value)
             {
-                sb.Append(projectUrl + "," + repo.defaultBranch + "," + repo.id + "," + repo.name + "," + repo.project + ",");
+                sb.Append(projectUrl + "," + repo.defaultBranch + "," + repo.id + "," + repo.name + "," + repo.project.name + ",");
                 sb.Append(repo.remoteUrl + "," + repo.sshUrl + "," + repo.url + "," + repo.webUrl + ",");
                 sb.AppendLine();
             }

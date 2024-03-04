@@ -28,6 +28,9 @@ public class Options
     [Option('u', "project", Required = true, HelpText = "Set the Project Urls to scan. Comma separated")]
     public string ProjectUrl { get; set; }
 
+    [Option('x', "collection", Required = true, HelpText = "Set the Collection Url to scan.")]
+    public string CollectionUrl { get; set; }
+
     [Option('t', "token", Required = false, HelpText = "Set personal access token to use")]
     public string Token { get; set; }
 
@@ -51,6 +54,9 @@ public class Options
 
     [Option('s', "skipbuilds", Required = false, HelpText = "Set whether to skip collecting builds", Default = "true")]
     public string SkipBuilds { get; set; }
+
+    [Option('a', "skipbase", Required = false, HelpText = "Set whether to skip collecting Base info like Teams, Area Paths etc", Default = "true")]
+    public string SkipBase { get; set; }
 
     [Option('k', "skippullrequests", Required = false, HelpText = "Set whether to skip collecting pull requests", Default = false)]
     public bool SkipPullRequests { get; set; }

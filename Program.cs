@@ -38,7 +38,7 @@ public class Program
         if (!Convert.ToBoolean(programOptions.SkipBase))
         {
             ConsoleWrite($"Retrieving Projects from {programOptions.CollectionUrl}");
-            string projectsJson = InvokeRestCall(programOptions.CollectionUrl, $"_apis/projects?api-version=7.0-preview");
+            string projectsJson = InvokeRestCall(programOptions.CollectionUrl, $"_apis/projects?api-version=7.0");
             if (!string.IsNullOrEmpty(projectsJson))
             {
                 Projects projects = JsonSerializer.Deserialize<Projects>(projectsJson);
@@ -105,7 +105,7 @@ public class Program
             {
                 List<TeamMember> allTeamMembers = new ();
                 ConsoleWrite($"Retrieving Team members for {team.name}");
-                string teamMembersJson = InvokeRestCall(programOptions.CollectionUrl, $"_apis/projects/{team.projectName}/teams/{team.name}/members?api-version=7.0");
+                string teamMembersJson = InvokeRestCall(programOptions.CollectionUrl, $"_apis/projects/{team.projectName}/teams/{team.name}/members?api-version=7.0-preview");
                 if (!string.IsNullOrEmpty(teamMembersJson))
                 {
                     TeamMembers teamMembers = JsonSerializer.Deserialize<TeamMembers>(teamMembersJson);
@@ -158,7 +158,7 @@ public class Program
             string filePrefix = projectUrls.Length > 1 ? "multi" : projectName;
             ConsoleWrite($"---------------- Project {projectName} ----------------");
             ConsoleWrite("Retrieving Repositories");
-            Repositories allrepositories = JsonSerializer.Deserialize<Repositories>(InvokeRestCall(projectUrl, "_apis/git/repositories?api-version=7.0-preview"));
+            Repositories allrepositories = JsonSerializer.Deserialize<Repositories>(InvokeRestCall(projectUrl, "_apis/git/repositories?api-version=7.0"));
             if (!string.IsNullOrEmpty(programOptions.Filter))
             {
                 ConsoleWrite("Applying Filters");
@@ -338,7 +338,7 @@ public class Program
                     ConsoleWrite($"Retrieving Commits from {repo.name} ({branchToScan})");
                     try
                     {
-                        string commitJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=6.0");
+                        string commitJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0");
                         if (!string.IsNullOrEmpty(commitJson))
                         {
                             CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(commitJson);
@@ -412,7 +412,7 @@ public class Program
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
                     ConsoleWrite($"Retrieving Pushes from {repo.name} ({branchToScan})");
-                    string pushesJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=6.0");
+                    string pushesJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0");
                     if (!string.IsNullOrEmpty(pushesJson))
                     {
                         Pushes pushes = JsonSerializer.Deserialize<Pushes>(pushesJson);
@@ -458,8 +458,8 @@ public class Program
             if (!Convert.ToBoolean(programOptions.SkipBuilds))
             {
                 List<Build> allBuilds = new ();
-                ConsoleWrite($"Retrieving Builds from {projectName}");
-                Builds builds = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?$top={programOptions.BuildCount}&api-version=6.0"));
+                ConsoleWrite($"Retrieving top {programOptions.BuildCount} Builds from {projectName}");
+                Builds builds = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?$top={programOptions.BuildCount}&minTime={programOptions.FromDate}&api-version=7.0"));
                 ConsoleWrite($"\tRetrieved {builds.value.Count}");
                 allBuilds.AddRange(builds.value);
                 ConsoleWrite($"Building csv for {allBuilds.Count} builds");
@@ -493,7 +493,7 @@ public class Program
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : programOptions.Branch;
-                    string pullRequestJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=6.0");
+                    string pullRequestJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=7.0");
                     if (!string.IsNullOrEmpty(pullRequestJson))
                     {
                         PullRequests pullRequests = JsonSerializer.Deserialize<PullRequests>(pullRequestJson);

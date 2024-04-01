@@ -28,7 +28,7 @@ public class Options
     [Option('u', "project", Required = true, HelpText = "Set the Project Urls to scan. Comma separated")]
     public string ProjectUrl { get; set; }
 
-    [Option('x', "collection", Required = true, HelpText = "Set the Collection Url to scan.")]
+    [Option('x', "collection", Required = false, HelpText = "Set the Collection Url to scan.")]
     public string CollectionUrl { get; set; }
 
     [Option('t', "token", Required = false, HelpText = "Set personal access token to use")]

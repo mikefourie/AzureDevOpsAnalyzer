@@ -457,31 +457,40 @@ public class Program
 
             if (!Convert.ToBoolean(programOptions.SkipBuilds))
             {
-                List<Build> allBuilds = new ();
-                ConsoleWrite($"Retrieving top {programOptions.BuildCount} Builds from {projectName}");
-                Builds builds = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?$top={programOptions.BuildCount}&minTime={programOptions.FromDate}&api-version=7.0"));
-                ConsoleWrite($"\tRetrieved {builds.value.Count}");
-                allBuilds.AddRange(builds.value);
-                ConsoleWrite($"Building csv for {allBuilds.Count} builds");
+                List<Build> allBuildsToIterate = new ();
+                ConsoleWrite($"Retrieving {programOptions.BuildCount} most recent Builds from {projectName}");
+                Builds buildsToIterate = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?$top=5000&maxBuildsPerDefinition=1&minTime={programOptions.FromDate}&api-version=7.0"));
+                ConsoleWrite($"\tRetrieved {buildsToIterate.value.Count} distinct build definition runs");
+                allBuildsToIterate.AddRange(buildsToIterate.value);
+
+                ConsoleWrite($"Building csv for {buildsToIterate.value.Count} build definitions to iterate");
                 sb.Clear();
                 if (firstProject)
                 {
                     sb.AppendLine("projecturl,id,reason,buildNumber,definition,result,requestedfor,uniqueName,repository,starttime,year,month,day,dayofweek,weekofyear,hour,finishtime,queuetime,totalminutes");
                 }
 
-                foreach (var build in allBuilds)
+                int defcounter = 1;
+                int buildcounter = 0;
+                foreach (var buildtoIterate in allBuildsToIterate)
                 {
-                    TimeSpan buildDuration = build.finishTime - build.startTime;
-                    sb.Append(projectUrl + "," + build.id + "," + build.reason + "," + build.buildNumber + "," + build.definition.name + "," + build.result + ",");
-                    sb.Append(StringToCSVCell(build.requestedFor.displayName) + "," + StringToCSVCell(build.requestedFor.uniqueName) + "," + build.repository.name + "," + build.startTime.ToLocalTime() + "," + build.startTime.ToLocalTime().Year + ",");
-                    sb.Append(build.startTime.ToLocalTime().Month + "," + build.startTime.ToLocalTime().Day + "," + build.startTime.ToLocalTime().DayOfWeek + ",");
-                    sb.Append(currentCulture.Calendar.GetWeekOfYear(build.startTime.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
-                    sb.Append(build.startTime.ToLocalTime().Hour + "," + build.finishTime.ToLocalTime() + "," + build.queueTime.ToLocalTime() + "," + buildDuration.TotalMinutes.ToString("##") + ",");
-                    sb.AppendLine();
+                    Builds builds = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?definitions={buildtoIterate.definition.id}&$top={programOptions.BuildCount}&minTime={programOptions.FromDate}&api-version=7.0"));
+                    ConsoleWrite($"Building csv for {builds.value.Count} builds. Build Definition {buildtoIterate.definition.name} - {defcounter++} of {buildsToIterate.value.Count}");
+                    foreach (var build in builds.value)
+                    {
+                        TimeSpan buildDuration = build.finishTime - build.startTime;
+                        sb.Append(projectUrl + "," + build.id + "," + build.reason + "," + build.buildNumber + "," + build.definition.name + "," + build.result + ",");
+                        sb.Append(StringToCSVCell(build.requestedFor.displayName) + "," + StringToCSVCell(build.requestedFor.uniqueName) + "," + build.repository.name + "," + build.startTime.ToLocalTime() + "," + build.startTime.ToLocalTime().Year + ",");
+                        sb.Append(build.startTime.ToLocalTime().Month + "," + build.startTime.ToLocalTime().Day + "," + build.startTime.ToLocalTime().DayOfWeek + ",");
+                        sb.Append(currentCulture.Calendar.GetWeekOfYear(build.startTime.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
+                        sb.Append(build.startTime.ToLocalTime().Hour + "," + build.finishTime.ToLocalTime() + "," + build.queueTime.ToLocalTime() + "," + buildDuration.TotalMinutes.ToString("##") + ",");
+                        sb.AppendLine();
+                        buildcounter++;
+                    }
                 }
 
                 programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-builds.csv");
-                ConsoleWrite($"Writing {programOptions.OutputFile}");
+                ConsoleWrite($"Writing {buildcounter} builds to {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
                 sb.Clear();
             }

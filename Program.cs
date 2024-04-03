@@ -247,86 +247,89 @@ public class Program
             File.AppendAllText(programOptions.OutputFile, sb.ToString());
             sb.Clear();
 
-            List<AreaPath> allAreaPaths = new ();
-            ConsoleWrite($"Retrieving Area Paths from {projectName}");
-
-            string areapathJson = InvokeRestCall(projectUrl, $"_apis/wit/classificationnodes/areas?$depth=100&api-version=7.0");
-            if (!string.IsNullOrEmpty(areapathJson))
+            if (!Convert.ToBoolean(programOptions.SkipBase))
             {
-                AreaPath areaPaths = JsonSerializer.Deserialize<AreaPath>(areapathJson);
+                List<AreaPath> allAreaPaths = new();
+                ConsoleWrite($"Retrieving Area Paths from {projectName}");
 
-                ConsoleWrite($"Building csv for AreaPaths");
-                sb.Clear();
-                if (firstProject)
+                string areapathJson = InvokeRestCall(projectUrl, $"_apis/wit/classificationnodes/areas?$depth=100&api-version=7.0");
+                if (!string.IsNullOrEmpty(areapathJson))
                 {
-                    sb.AppendLine("projecturl,areapath,name");
-                }
+                    AreaPath areaPaths = JsonSerializer.Deserialize<AreaPath>(areapathJson);
 
-                sb.AppendLine(projectUrl + "," + areaPaths.path.Replace($"\\{projectName}\\Area", projectName) + "," + areaPaths.name);
-
-                if (areaPaths.children.Count > 0)
-                {
-                    foreach (var path in areaPaths.children)
+                    ConsoleWrite($"Building csv for AreaPaths");
+                    sb.Clear();
+                    if (firstProject)
                     {
-                        AppendChildAreaPaths(projectUrl, path, sb, projectName);
+                        sb.AppendLine("projecturl,areapath,name");
                     }
-                }
-                else
-                {
-                    sb.AppendLine(projectUrl + "," + areaPaths.path + "," + areaPaths.name);
-                }
 
-                programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-areapaths.csv");
-                ConsoleWrite($"Writing {programOptions.OutputFile}");
-                File.AppendAllText(programOptions.OutputFile, sb.ToString());
-                sb.Clear();
-            }
+                    sb.AppendLine(projectUrl + "," + areaPaths.path.Replace($"\\{projectName}\\Area", projectName) + "," + areaPaths.name);
 
-            // Get all team area paths
-            bool firstTeamAreaPath = true;
-            foreach (var team in allTeams)
-            {
-                List<TeamAreaPathConfig> allTeamAreaPathConfig = new ();
-                ConsoleWrite($"Retrieving Area Paths for {team.name}");
-                string teamAreaPathsJson = InvokeRestCall(projectUrl, $"{team.name}/_apis/work/teamsettings/teamfieldvalues?api-version=7.0");
-
-                ConsoleWrite($"Building csv for {team.name} Team area paths");
-                sb.Clear();
-                if (firstTeamAreaPath)
-                {
-                    sb.AppendLine("projecturl,teamname,areapath,includechildren");
-                }
-
-                if (!string.IsNullOrEmpty(teamAreaPathsJson))
-                {
-                    TeamAreaPathConfig teamAreaPaths = JsonSerializer.Deserialize<TeamAreaPathConfig>(teamAreaPathsJson);
-                    if (teamAreaPaths.values.Count > 0)
+                    if (areaPaths.children != null && areaPaths.children.Count > 0)
                     {
-                        foreach (var areapath in teamAreaPaths.values)
+                        foreach (var path in areaPaths.children)
                         {
-                            sb.Append(projectUrl + "," + team.name + "," + areapath.value + "," + areapath.includeChildren);
-                            sb.AppendLine();
+                            AppendChildAreaPaths(projectUrl, path, sb, projectName);
                         }
                     }
-                }
-                else
-                {
-                    ConsoleWrite($"\tWARNING: Unable to retrieve team area paths from {team.name} in {team.projectName}");
-                }
+                    else
+                    {
+                        sb.AppendLine(projectUrl + "," + areaPaths.path + "," + areaPaths.name);
+                    }
 
-                programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-teamareapaths.csv");
-                ConsoleWrite($"Writing {programOptions.OutputFile}");
-                if (firstTeamAreaPath)
-                {
-                    File.WriteAllText(programOptions.OutputFile, sb.ToString());
-                }
-                else
-                {
+                    programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-areapaths.csv");
+                    ConsoleWrite($"Writing {programOptions.OutputFile}");
                     File.AppendAllText(programOptions.OutputFile, sb.ToString());
+                    sb.Clear();
                 }
 
-                sb.Clear();
-                firstTeamAreaPath = false;
+                // Get all team area paths
+                bool firstTeamAreaPath = true;
+                foreach (var team in allTeams)
+                {
+                    List<TeamAreaPathConfig> allTeamAreaPathConfig = new();
+                    ConsoleWrite($"Retrieving Area Paths for {team.name}");
+                    string teamAreaPathsJson = InvokeRestCall(projectUrl, $"{team.name}/_apis/work/teamsettings/teamfieldvalues?api-version=7.0");
+
+                    ConsoleWrite($"Building csv for {team.name} Team area paths");
+                    sb.Clear();
+                    if (firstTeamAreaPath)
+                    {
+                        sb.AppendLine("projecturl,teamname,areapath,includechildren");
+                    }
+
+                    if (!string.IsNullOrEmpty(teamAreaPathsJson))
+                    {
+                        TeamAreaPathConfig teamAreaPaths = JsonSerializer.Deserialize<TeamAreaPathConfig>(teamAreaPathsJson);
+                        if (teamAreaPaths.values.Count > 0)
+                        {
+                            foreach (var areapath in teamAreaPaths.values)
+                            {
+                                sb.Append(projectUrl + "," + team.name + "," + areapath.value + "," + areapath.includeChildren);
+                                sb.AppendLine();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ConsoleWrite($"\tWARNING: Unable to retrieve team area paths from {team.name} in {team.projectName}");
+                    }
+
+                    programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-teamareapaths.csv");
+                    ConsoleWrite($"Writing {programOptions.OutputFile}");
+                    if (firstTeamAreaPath)
+                    {
+                        File.WriteAllText(programOptions.OutputFile, sb.ToString());
+                    }
+                    else
+                    {
+                        File.AppendAllText(programOptions.OutputFile, sb.ToString());
+                    }
+
+                    sb.Clear();
+                    firstTeamAreaPath = false;
+                }
             }
 
             if (!programOptions.SkipCommits)

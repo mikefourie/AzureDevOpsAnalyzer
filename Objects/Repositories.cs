@@ -12,7 +12,7 @@ public class Value
     public string webUrl { get; set; }
     public string defaultBranch { get; set; }
     public double size { get; set; }
-
+    public bool isDisabled { get; set; }
 }
 
 public class Repositories

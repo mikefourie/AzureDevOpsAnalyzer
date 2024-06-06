@@ -16,7 +16,6 @@ public class Program
     {
         CultureInfo currentCulture = CultureInfo.CurrentCulture;
         StringBuilder sb = new ();
-        Repositories repositories = new () { value = new List<Value>() };
         DateTime start = DateTime.Now;
         List<Project> allProjects = new ();
         List<Team> allTeams = new ();
@@ -153,6 +152,8 @@ public class Program
         bool firstProject = true;
         foreach (string projectUrl in projectUrls)
         {
+            Repositories repositories = new () { value = new List<Value>() };
+
             string[] projectParts = projectUrl.Split("/");
             string projectName = projectParts[^1];
             string filePrefix = projectUrls.Length > 1 ? "multi" : projectName;
@@ -161,7 +162,10 @@ public class Program
             Repositories allrepositories = JsonSerializer.Deserialize<Repositories>(InvokeRestCall(projectUrl, "_apis/git/repositories?api-version=7.0"));
             if (!string.IsNullOrEmpty(programOptions.Filter))
             {
+                Console.WriteLine("\n-------------------------------------------");
+                Console.WriteLine($"{allrepositories.value.Count} Repositories to consider in {projectName}");
                 ConsoleWrite("Applying Filters");
+                Console.WriteLine("-------------------------------------------");
                 string[] repositoryFilters = programOptions.Filter.Split(",");
                 foreach (var repo in allrepositories.value.OrderBy(r => r.name))
                 {
@@ -244,12 +248,21 @@ public class Program
 
             programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-repositories.csv");
             ConsoleWrite($"Writing {programOptions.OutputFile}");
-            File.AppendAllText(programOptions.OutputFile, sb.ToString());
+
+            if (firstProject)
+            {
+                File.WriteAllText(programOptions.OutputFile, sb.ToString());
+            }
+            else
+            {
+                File.AppendAllText(programOptions.OutputFile, sb.ToString());
+            }
+
             sb.Clear();
 
             if (!Convert.ToBoolean(programOptions.SkipBase))
             {
-                List<AreaPath> allAreaPaths = new();
+                List<AreaPath> allAreaPaths = new ();
                 ConsoleWrite($"Retrieving Area Paths from {projectName}");
 
                 string areapathJson = InvokeRestCall(projectUrl, $"_apis/wit/classificationnodes/areas?$depth=100&api-version=7.0");
@@ -335,7 +348,7 @@ public class Program
             if (!programOptions.SkipCommits)
             {
                 List<Commit> allCommits = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch.Replace("refs/heads/", string.Empty) : programOptions.Branch;
                     ConsoleWrite($"Retrieving Commits from {repo.name} ({branchToScan})");
@@ -411,7 +424,7 @@ public class Program
             if (!programOptions.SkipPushes)
             {
                 List<Push> allPushes = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
                     ConsoleWrite($"Retrieving Pushes from {repo.name} ({branchToScan})");
@@ -502,7 +515,7 @@ public class Program
             {
                 List<PullRequest> allPullRequests = new ();
                 ConsoleWrite($"Retrieving Pull Requests from {projectName}");
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : programOptions.Branch;
                     string pullRequestJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=7.0");

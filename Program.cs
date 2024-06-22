@@ -419,6 +419,73 @@ public class Program
                 ConsoleWrite($"Writing {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
                 sb.Clear();
+
+                allCommits = new();
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
+                {
+                    ConsoleWrite($"Retrieving ALL Commits from {repo.name}");
+                    try
+                    {
+                        string commitJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0");
+                        if (!string.IsNullOrEmpty(commitJson))
+                        {
+                            CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(commitJson);
+                            if (commitHistory.value.Count > 0)
+                            {
+                                allCommits.AddRange(commitHistory.value);
+                                ConsoleWrite($"\tRetrieved {commitHistory.value.Count} from {repo.name}");
+                            }
+                        }
+                        else
+                        {
+                            ConsoleWrite($"\tWARNING: Unable to retrieve commit history from {repo.name}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ConsoleWrite($"\tError {ex}");
+                    }
+                }
+
+                ConsoleWrite($"Building csv for {allCommits.Count} commits");
+                sb.Clear();
+                if (firstProject)
+                {
+                    sb.AppendLine("projecturl,repository,branch,isinternal,authordate,authoremail,authorname,add,delete,edit,commitid,committerdate,year,month,day,dayofweek,weekofyear,hour,committeremail,committername,remoteurl,comment");
+                }
+
+                foreach (var commit in allCommits)
+                {
+                    sb.Append(projectUrl + ",");
+                    string[] urlParts = commit.remoteUrl.Split("/");
+                    sb.Append(urlParts[6] + ",");
+                    sb.Append(commit.branch + ",");
+                    if (string.IsNullOrEmpty(programOptions.InternalIdentifier))
+                    {
+                        sb.Append("true,");
+                    }
+                    else
+                    {
+                        sb.Append(currentCulture.CompareInfo.IndexOf(commit.committer.email, programOptions.InternalIdentifier, CompareOptions.IgnoreCase) >= 0 ? true + "," : false + ",");
+                    }
+
+                    sb.Append(commit.author.date.ToLocalTime() + ",\"" + commit.author.email + "\",\"" + commit.author.name + "\"," + commit.changeCounts.Add + ",");
+                    sb.Append(commit.changeCounts.Delete + "," + commit.changeCounts.Edit + "," + commit.commitId + "," + commit.committer.date.ToLocalTime() + ",");
+                    sb.Append(commit.committer.date.ToLocalTime().Year + "," + commit.committer.date.ToLocalTime().Month + "," + commit.committer.date.ToLocalTime().Day + "," + commit.committer.date.ToLocalTime().DayOfWeek + ",");
+                    sb.Append(currentCulture.Calendar.GetWeekOfYear(commit.committer.date.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
+                    sb.Append(commit.committer.date.ToLocalTime().Hour + "," + commit.committer.email + ",\"" + commit.committer.name + "\"," + commit.remoteUrl + ",");
+                    if (!programOptions.NoMessages)
+                    {
+                        sb.Append($"\"{commit.comment}\"" + ",");
+                    }
+
+                    sb.AppendLine();
+                }
+
+                programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-ALLcommits.csv");
+                ConsoleWrite($"Writing {programOptions.OutputFile}");
+                File.AppendAllText(programOptions.OutputFile, sb.ToString());
+                sb.Clear();
             }
 
             if (!programOptions.SkipPushes)

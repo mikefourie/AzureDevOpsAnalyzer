@@ -301,7 +301,7 @@ public class Program
                 bool firstTeamAreaPath = true;
                 foreach (var team in allTeams)
                 {
-                    List<TeamAreaPathConfig> allTeamAreaPathConfig = new();
+                    List<TeamAreaPathConfig> allTeamAreaPathConfig = new ();
                     ConsoleWrite($"Retrieving Area Paths for {team.name}");
                     string teamAreaPathsJson = InvokeRestCall(projectUrl, $"{team.name}/_apis/work/teamsettings/teamfieldvalues?api-version=7.0");
 
@@ -420,7 +420,7 @@ public class Program
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
                 sb.Clear();
 
-                allCommits = new();
+                allCommits = new ();
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
                 {
                     ConsoleWrite($"Retrieving ALL Commits from {repo.name}");
@@ -576,6 +576,41 @@ public class Program
                 ConsoleWrite($"Writing {buildcounter} builds to {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
                 sb.Clear();
+
+                if (!Convert.ToBoolean(programOptions.SkipBuildArtifacts))
+                {
+                    ConsoleWrite($"Iterating Build artifacts");
+                    sb.Clear();
+                    if (firstProject)
+                    {
+                        sb.AppendLine("projecturl,buildid,buildNumber,definition,artifactid,artifactname,artifactsize");
+                    }
+
+                    defcounter = 1;
+                    buildcounter = 0;
+                    foreach (var buildtoIterate in allBuildsToIterate)
+                    {
+                        Builds builds = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?definitions={buildtoIterate.definition.id}&$top={programOptions.BuildCount}&minTime={programOptions.FromDate}&api-version=7.0"));
+                        ConsoleWrite($"Building csv for {builds.value.Count} builds. Build Definition {buildtoIterate.definition.name} - {defcounter++} of {buildsToIterate.value.Count}");
+                        foreach (var build in builds.value)
+                        {
+                            BuildArtifacts buildartifacts = JsonSerializer.Deserialize<BuildArtifacts>(InvokeRestCall(projectUrl, $"_apis/build/builds/{build.id}/artifacts?api-version=7.0"));
+                            ConsoleWrite($"Building csv for {build.buildNumber} artifacts. Build Definition {build.definition.name}");
+                            foreach (var artifact in buildartifacts.value)
+                            {
+                                sb.Append(projectUrl + "," + build.id + "," + build.buildNumber + "," + build.definition.name + ",");
+                                sb.Append(artifact.id + "," + artifact.name + "," + artifact.resource.properties.artifactsize + ",");
+                                sb.AppendLine();
+                                buildcounter++;
+                            }
+                        }
+                    }
+
+                    programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-buildartifacts.csv");
+                    ConsoleWrite($"Writing {buildcounter} build artifacts to {programOptions.OutputFile}");
+                    File.AppendAllText(programOptions.OutputFile, sb.ToString());
+                    sb.Clear();
+                }
             }
 
             if (!programOptions.SkipPullRequests)

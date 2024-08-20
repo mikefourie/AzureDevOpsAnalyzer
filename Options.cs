@@ -55,6 +55,9 @@ public class Options
     [Option('s', "skipbuilds", Required = false, HelpText = "Set whether to skip collecting builds", Default = "true")]
     public string SkipBuilds { get; set; }
 
+    [Option('w', "skipbuildartifacts", Required = false, HelpText = "Set whether to skip collecting build artifacts", Default = "true")]
+    public string SkipBuildArtifacts { get; set; }
+
     [Option('a', "skipbase", Required = false, HelpText = "Set whether to skip collecting Base info like Teams, Area Paths etc", Default = "true")]
     public string SkipBase { get; set; }
 

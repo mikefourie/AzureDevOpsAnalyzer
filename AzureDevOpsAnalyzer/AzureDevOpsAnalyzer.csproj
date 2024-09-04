@@ -7,9 +7,14 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="CommandLineParser" Version="2.9.1" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
 		<PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\AzureDevOps.Lib\AzureDevOps.Lib.csproj" />
+	  <ProjectReference Include="..\Helper.Lib\Helper.Lib.csproj" />
 	</ItemGroup>
 </Project>

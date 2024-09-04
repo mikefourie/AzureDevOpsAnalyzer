@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "AzureDevOpsAnalyzer": {
-      "commandName": "Project",
-      "commandLineArgs": "-t yourtoken -u https://dev.azure.com/yourorg/yourproject -f ^kern.* -n true"
-    }
-  }
-}

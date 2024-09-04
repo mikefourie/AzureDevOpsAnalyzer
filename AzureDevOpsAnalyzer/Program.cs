@@ -1,26 +1,36 @@
 ﻿namespace AzureDevOpsAnalyzer;
 
+using System;
 using System.Globalization;
 using System.IO;
-using System.Net.Http.Headers;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using AzureDevOps.Lib;
 using CommandLine;
+using Helper.Lib;
+using Microsoft.Extensions.DependencyInjection;
 
 public class Program
 {
     private static Options programOptions = new ();
 
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
+        ServiceCollection services = new ();
+        services.AddHttpClient();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+
         CultureInfo currentCulture = CultureInfo.CurrentCulture;
         StringBuilder sb = new ();
         DateTime start = DateTime.Now;
         List<Project> allProjects = new ();
         List<Team> allTeams = new ();
 
-        WriteHeader();
+        ConsoleHelper.WriteHeader("    AzureDevOpsAnalyzer");
         var result = Parser.Default.ParseArguments<Options>(args)
                 .WithParsed(o =>
                 {
@@ -36,23 +46,22 @@ public class Program
 
         if (!Convert.ToBoolean(programOptions.SkipBase))
         {
-            ConsoleWrite($"Retrieving Projects from {programOptions.CollectionUrl}");
-            string projectsJson = InvokeRestCall(programOptions.CollectionUrl, $"_apis/projects?api-version=7.0");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Projects from {programOptions.CollectionUrl}");
+            string projectsJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), programOptions.CollectionUrl, $"_apis/projects?api-version=7.0", programOptions.Token);
             if (!string.IsNullOrEmpty(projectsJson))
             {
                 Projects projects = JsonSerializer.Deserialize<Projects>(projectsJson);
                 if (projects.value.Count > 0)
                 {
-                    ConsoleWrite($"\tRetrieved {projects.value.Count} projects from {programOptions.CollectionUrl}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {projects.value.Count} projects from {programOptions.CollectionUrl}");
                     allProjects.AddRange(projects.value);
                 }
             }
             else
             {
-                ConsoleWrite($"\tWARNING: Unable to retrieve projects from {programOptions.CollectionUrl}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve projects from {programOptions.CollectionUrl}");
             }
 
-            ConsoleWrite($"Building csv for {allProjects.Count} Projects");
             sb.Clear();
             sb.AppendLine("collectionurl,id,name");
 
@@ -63,27 +72,26 @@ public class Program
             }
 
             programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"projects.csv");
-            ConsoleWrite($"Writing {programOptions.OutputFile}");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allProjects.Count} Projects to {programOptions.OutputFile}");
             File.WriteAllText(programOptions.OutputFile, sb.ToString());
             sb.Clear();
 
-            ConsoleWrite($"Retrieving Teams from {programOptions.CollectionUrl}");
-            string teamsJson = InvokeRestCall(programOptions.CollectionUrl, $"_apis/teams?api-version=7.0-preview");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Teams from {programOptions.CollectionUrl}");
+            string teamsJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), programOptions.CollectionUrl, $"_apis/teams?api-version=7.0-preview", programOptions.Token);
             if (!string.IsNullOrEmpty(teamsJson))
             {
                 Teams teams = JsonSerializer.Deserialize<Teams>(teamsJson);
                 if (teams.value.Count > 0)
                 {
-                    ConsoleWrite($"\tRetrieved {teams.value.Count} teams from {programOptions.CollectionUrl}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {teams.value.Count} teams from {programOptions.CollectionUrl}");
                     allTeams.AddRange(teams.value);
                 }
             }
             else
             {
-                ConsoleWrite($"\tWARNING: Unable to retrieve teams from {programOptions.CollectionUrl}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve teams from {programOptions.CollectionUrl}");
             }
 
-            ConsoleWrite($"Building csv for {allTeams.Count} Teams");
             sb.Clear();
             sb.AppendLine("collectionurl,teamid,teamname,projectName");
 
@@ -94,7 +102,7 @@ public class Program
             }
 
             programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"teams.csv");
-            ConsoleWrite($"Writing {programOptions.OutputFile}");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allTeams.Count} Teams to {programOptions.OutputFile}");
             File.WriteAllText(programOptions.OutputFile, sb.ToString());
             sb.Clear();
 
@@ -103,23 +111,22 @@ public class Program
             foreach (var team in allTeams)
             {
                 List<TeamMember> allTeamMembers = new ();
-                ConsoleWrite($"Retrieving Team members for {team.name}");
-                string teamMembersJson = InvokeRestCall(programOptions.CollectionUrl, $"_apis/projects/{team.projectName}/teams/{team.name}/members?api-version=7.0-preview");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Team members for {team.name}");
+                string teamMembersJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), programOptions.CollectionUrl, $"_apis/projects/{team.projectName}/teams/{team.name}/members?api-version=7.0-preview", programOptions.Token);
                 if (!string.IsNullOrEmpty(teamMembersJson))
                 {
                     TeamMembers teamMembers = JsonSerializer.Deserialize<TeamMembers>(teamMembersJson);
                     if (teamMembers.value.Count > 0)
                     {
-                        ConsoleWrite($"\tRetrieved {teamMembers.value.Count} team members from {team.name} in {team.projectName}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {teamMembers.value.Count} team members from {team.name} in {team.projectName}");
                         allTeamMembers.AddRange(teamMembers.value);
                     }
                 }
                 else
                 {
-                    ConsoleWrite($"\tWARNING: Unable to retrieve team members from {team.name} in {team.projectName}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve team members from {team.name} in {team.projectName}");
                 }
 
-                ConsoleWrite($"Building csv for {team.name} Team members");
                 sb.Clear();
                 if (firstTeam)
                 {
@@ -128,12 +135,12 @@ public class Program
 
                 foreach (var teammember in allTeamMembers)
                 {
-                    sb.Append(programOptions.CollectionUrl + "," + team.projectName + "," + team.name + "," + teammember.isTeamAdmin + "," + StringToCSVCell(teammember.identity.displayName) + "," + teammember.identity.uniqueName);
+                    sb.Append(programOptions.CollectionUrl + "," + team.projectName + "," + team.name + "," + teammember.isTeamAdmin + "," + StringHelper.StringToCSVCell(teammember.identity.displayName) + "," + teammember.identity.uniqueName);
                     sb.AppendLine();
                 }
 
                 programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"teammembers.csv");
-                ConsoleWrite($"Writing {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {team.name} Team members to {programOptions.OutputFile}");
                 if (firstTeam)
                 {
                     File.WriteAllText(programOptions.OutputFile, sb.ToString());
@@ -153,19 +160,16 @@ public class Program
         foreach (string projectUrl in projectUrls)
         {
             Repositories repositories = new () { value = new List<Value>() };
-
             string[] projectParts = projectUrl.Split("/");
             string projectName = projectParts[^1];
             string filePrefix = projectUrls.Length > 1 ? "multi" : projectName;
-            ConsoleWrite($"---------------- Project {projectName} ----------------");
-            ConsoleWrite("Retrieving Repositories");
-            Repositories allrepositories = JsonSerializer.Deserialize<Repositories>(InvokeRestCall(projectUrl, "_apis/git/repositories?api-version=7.0"));
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Analyzing Project: {projectName}");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, "Retrieving Repositories");
+            Repositories allrepositories = JsonSerializer.Deserialize<Repositories>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, "_apis/git/repositories?api-version=7.0", programOptions.Token));
             if (!string.IsNullOrEmpty(programOptions.Filter))
             {
-                Console.WriteLine("\n-------------------------------------------");
-                Console.WriteLine($"{allrepositories.value.Count} Repositories to consider in {projectName}");
-                ConsoleWrite("Applying Filters");
-                Console.WriteLine("-------------------------------------------");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, "Applying Filters");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"{allrepositories.value.Count} Repositories to consider in {projectName}");
                 string[] repositoryFilters = programOptions.Filter.Split(",");
                 foreach (var repo in allrepositories.value.OrderBy(r => r.name))
                 {
@@ -180,7 +184,7 @@ public class Program
                             if (m.Success)
                             {
                                 // we have a match so exclude and break to save cycles
-                                ConsoleWrite($"Excluding {repo.name} per filter: {filter}");
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Excluding {repo.name} per filter: {filter}");
                                 exclude = true;
                                 break;
                             }
@@ -202,9 +206,13 @@ public class Program
                             if (m.Success)
                             {
                                 // we have a match so exclude and break to save cycles
-                                ConsoleWrite($"Including {repo.name} per filter: {filter}");
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Including {repo.name} per filter: {filter}");
                                 include = true;
                                 break;
+                            }
+                            else
+                            {
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Excluding {repo.name} per filter: {filter}");
                             }
                         }
 
@@ -225,13 +233,12 @@ public class Program
                 }
             }
 
-            Console.WriteLine("\n-------------------------------------------");
-            Console.WriteLine($"{repositories.value.Count} Repositories to report on");
-            Console.WriteLine("-------------------------------------------");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Repositories to Analyze: {repositories.value.Count}");
 
+            int repoCount = 0;
             foreach (var repo in repositories.value)
             {
-                Console.WriteLine($"\t{repo.name}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"{++repoCount}. {repo.name}");
             }
 
             if (firstProject)
@@ -247,7 +254,7 @@ public class Program
             }
 
             programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-repositories.csv");
-            ConsoleWrite($"Writing {programOptions.OutputFile}");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {programOptions.OutputFile}");
 
             if (firstProject)
             {
@@ -263,14 +270,13 @@ public class Program
             if (!Convert.ToBoolean(programOptions.SkipBase))
             {
                 List<AreaPath> allAreaPaths = new ();
-                ConsoleWrite($"Retrieving Area Paths from {projectName}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Area Paths from {projectName}");
 
-                string areapathJson = InvokeRestCall(projectUrl, $"_apis/wit/classificationnodes/areas?$depth=100&api-version=7.0");
+                string areapathJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/wit/classificationnodes/areas?$depth=100&api-version=7.0", programOptions.Token);
                 if (!string.IsNullOrEmpty(areapathJson))
                 {
                     AreaPath areaPaths = JsonSerializer.Deserialize<AreaPath>(areapathJson);
 
-                    ConsoleWrite($"Building csv for AreaPaths");
                     sb.Clear();
                     if (firstProject)
                     {
@@ -283,7 +289,7 @@ public class Program
                     {
                         foreach (var path in areaPaths.children)
                         {
-                            AppendChildAreaPaths(projectUrl, path, sb, projectName);
+                            AzureDevOpsHelper.AppendChildAreaPaths(projectUrl, path, sb, projectName);
                         }
                     }
                     else
@@ -292,7 +298,7 @@ public class Program
                     }
 
                     programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-areapaths.csv");
-                    ConsoleWrite($"Writing {programOptions.OutputFile}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {programOptions.OutputFile}");
                     File.AppendAllText(programOptions.OutputFile, sb.ToString());
                     sb.Clear();
                 }
@@ -302,10 +308,9 @@ public class Program
                 foreach (var team in allTeams)
                 {
                     List<TeamAreaPathConfig> allTeamAreaPathConfig = new ();
-                    ConsoleWrite($"Retrieving Area Paths for {team.name}");
-                    string teamAreaPathsJson = InvokeRestCall(projectUrl, $"{team.name}/_apis/work/teamsettings/teamfieldvalues?api-version=7.0");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Area Paths for {team.name}");
+                    string teamAreaPathsJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"{team.name}/_apis/work/teamsettings/teamfieldvalues?api-version=7.0", programOptions.Token);
 
-                    ConsoleWrite($"Building csv for {team.name} Team area paths");
                     sb.Clear();
                     if (firstTeamAreaPath)
                     {
@@ -326,11 +331,11 @@ public class Program
                     }
                     else
                     {
-                        ConsoleWrite($"\tWARNING: Unable to retrieve team area paths from {team.name} in {team.projectName}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve team area paths from {team.name} in {team.projectName}");
                     }
 
                     programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-teamareapaths.csv");
-                    ConsoleWrite($"Writing {programOptions.OutputFile}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {team.name} Team area paths to {programOptions.OutputFile}");
                     if (firstTeamAreaPath)
                     {
                         File.WriteAllText(programOptions.OutputFile, sb.ToString());
@@ -348,13 +353,13 @@ public class Program
             if (!programOptions.SkipCommits)
             {
                 List<Commit> allCommits = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch.Replace("refs/heads/", string.Empty) : programOptions.Branch;
-                    ConsoleWrite($"Retrieving Commits from {repo.name} ({branchToScan})");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Commits from {repo.name} ({branchToScan})");
                     try
                     {
-                        string commitJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0");
+                        string commitJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token);
                         if (!string.IsNullOrEmpty(commitJson))
                         {
                             CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(commitJson);
@@ -366,21 +371,24 @@ public class Program
                                 }
 
                                 allCommits.AddRange(commitHistory.value);
-                                ConsoleWrite($"\tRetrieved {commitHistory.value.Count} from {repo.name}");
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {commitHistory.value.Count} commits from {repo.name}");
+                            }
+                            else
+                            {
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved 0 commits from {repo.name}");
                             }
                         }
                         else
                         {
-                            ConsoleWrite($"\tWARNING: Unable to retrieve commit history from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve commit history from {repo.name}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        ConsoleWrite($"\t{branchToScan} not found {ex}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\t{branchToScan} not found {ex}");
                     }
                 }
 
-                ConsoleWrite($"Building csv for {allCommits.Count} commits");
                 sb.Clear();
                 if (firstProject)
                 {
@@ -416,38 +424,41 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-commits.csv");
-                ConsoleWrite($"Writing {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits to {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
                 sb.Clear();
 
                 allCommits = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
-                    ConsoleWrite($"Retrieving ALL Commits from {repo.name}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving ALL Commits from {repo.name}");
                     try
                     {
-                        string commitJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0");
+                        string commitJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token);
                         if (!string.IsNullOrEmpty(commitJson))
                         {
                             CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(commitJson);
                             if (commitHistory.value.Count > 0)
                             {
                                 allCommits.AddRange(commitHistory.value);
-                                ConsoleWrite($"\tRetrieved {commitHistory.value.Count} from {repo.name}");
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {commitHistory.value.Count} commits from {repo.name}");
+                            }
+                            else
+                            {
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved 0 commits from {repo.name}");
                             }
                         }
                         else
                         {
-                            ConsoleWrite($"\tWARNING: Unable to retrieve commit history from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve commit history from {repo.name}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        ConsoleWrite($"\tError {ex}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tError {ex}");
                     }
                 }
 
-                ConsoleWrite($"Building csv for {allCommits.Count} commits");
                 sb.Clear();
                 if (firstProject)
                 {
@@ -483,7 +494,7 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-ALLcommits.csv");
-                ConsoleWrite($"Writing {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits to {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
                 sb.Clear();
             }
@@ -491,11 +502,11 @@ public class Program
             if (!programOptions.SkipPushes)
             {
                 List<Push> allPushes = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
-                    ConsoleWrite($"Retrieving Pushes from {repo.name} ({branchToScan})");
-                    string pushesJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Pushes from {repo.name} ({branchToScan})");
+                    string pushesJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token);
                     if (!string.IsNullOrEmpty(pushesJson))
                     {
                         Pushes pushes = JsonSerializer.Deserialize<Pushes>(pushesJson);
@@ -507,16 +518,19 @@ public class Program
                             }
 
                             allPushes.AddRange(pushes.value);
-                            ConsoleWrite($"\tRetrieved {pushes.value.Count} pushes from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {pushes.value.Count} pushes from {repo.name}");
+                        }
+                        else
+                        {
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved 0 pushes from {repo.name}");
                         }
                     }
                     else
                     {
-                        ConsoleWrite($"\tWARNING: Unable to retrieve pushes from {repo.name}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve pushes from {repo.name}");
                     }
                 }
 
-                ConsoleWrite($"Building csv for {allPushes.Count} pushes");
                 sb.Clear();
                 if (firstProject)
                 {
@@ -528,12 +542,12 @@ public class Program
                     sb.Append(projectUrl + "," + push.repository.name + "," + push.branch + "," + push.pushId + "," + push.date.ToLocalTime() + ",");
                     sb.Append(push.date.ToLocalTime().Year + "," + push.date.ToLocalTime().Month + "," + push.date.ToLocalTime().Day + "," + push.date.ToLocalTime().DayOfWeek + ",");
                     sb.Append(currentCulture.Calendar.GetWeekOfYear(push.date.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
-                    sb.Append(push.date.ToLocalTime().Hour + "," + StringToCSVCell(push.pushedBy.uniqueName) + "," + StringToCSVCell(push.pushedBy.displayName) + "\"," + push.repository.remoteUrl + ",");
+                    sb.Append(push.date.ToLocalTime().Hour + "," + StringHelper.StringToCSVCell(push.pushedBy.uniqueName) + "," + StringHelper.StringToCSVCell(push.pushedBy.displayName) + "\"," + push.repository.remoteUrl + ",");
                     sb.AppendLine();
                 }
 
                 programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-pushes.csv");
-                ConsoleWrite($"Writing {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPushes.Count} pushes to {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
                 sb.Clear();
             }
@@ -541,12 +555,12 @@ public class Program
             if (!Convert.ToBoolean(programOptions.SkipBuilds))
             {
                 List<Build> allBuildsToIterate = new ();
-                ConsoleWrite($"Retrieving {programOptions.BuildCount} most recent Builds from {projectName}");
-                Builds buildsToIterate = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?$top=5000&maxBuildsPerDefinition=1&minTime={programOptions.FromDate}&api-version=7.0"));
-                ConsoleWrite($"\tRetrieved {buildsToIterate.value.Count} distinct build definition runs");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving {programOptions.BuildCount} most recent Builds from {projectName}");
+                Builds buildsToIterate = JsonSerializer.Deserialize<Builds>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/build/builds/?$top=5000&maxBuildsPerDefinition=1&minTime={programOptions.FromDate}&api-version=7.0", programOptions.Token));
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {buildsToIterate.value.Count} distinct build definition runs");
                 allBuildsToIterate.AddRange(buildsToIterate.value);
 
-                ConsoleWrite($"Building csv for {buildsToIterate.value.Count} build definitions to iterate");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Building csv for {buildsToIterate.value.Count} build definitions to iterate");
                 sb.Clear();
                 if (firstProject)
                 {
@@ -557,13 +571,13 @@ public class Program
                 int buildcounter = 0;
                 foreach (var buildtoIterate in allBuildsToIterate)
                 {
-                    Builds builds = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?definitions={buildtoIterate.definition.id}&$top={programOptions.BuildCount}&minTime={programOptions.FromDate}&api-version=7.0"));
-                    ConsoleWrite($"Building csv for {builds.value.Count} builds. Build Definition {buildtoIterate.definition.name} - {defcounter++} of {buildsToIterate.value.Count}");
+                    Builds builds = JsonSerializer.Deserialize<Builds>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/build/builds/?definitions={buildtoIterate.definition.id}&$top={programOptions.BuildCount}&minTime={programOptions.FromDate}&api-version=7.0", programOptions.Token));
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Building csv for {builds.value.Count} builds. Build Definition {buildtoIterate.definition.name} - {defcounter++} of {buildsToIterate.value.Count}");
                     foreach (var build in builds.value)
                     {
                         TimeSpan buildDuration = build.finishTime - build.startTime;
                         sb.Append(projectUrl + "," + build.id + "," + build.reason + "," + build.buildNumber + "," + build.definition.name + "," + build.result + ",");
-                        sb.Append(StringToCSVCell(build.requestedFor.displayName) + "," + StringToCSVCell(build.requestedFor.uniqueName) + "," + build.repository.name + "," + build.startTime.ToLocalTime() + "," + build.startTime.ToLocalTime().Year + ",");
+                        sb.Append(StringHelper.StringToCSVCell(build.requestedFor.displayName) + "," + StringHelper.StringToCSVCell(build.requestedFor.uniqueName) + "," + build.repository.name + "," + build.startTime.ToLocalTime() + "," + build.startTime.ToLocalTime().Year + ",");
                         sb.Append(build.startTime.ToLocalTime().Month + "," + build.startTime.ToLocalTime().Day + "," + build.startTime.ToLocalTime().DayOfWeek + ",");
                         sb.Append(currentCulture.Calendar.GetWeekOfYear(build.startTime.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
                         sb.Append(build.startTime.ToLocalTime().Hour + "," + build.finishTime.ToLocalTime() + "," + build.queueTime.ToLocalTime() + "," + buildDuration.TotalMinutes.ToString("##") + ",");
@@ -573,13 +587,13 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-builds.csv");
-                ConsoleWrite($"Writing {buildcounter} builds to {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} builds to {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
                 sb.Clear();
 
                 if (!Convert.ToBoolean(programOptions.SkipBuildArtifacts))
                 {
-                    ConsoleWrite($"Iterating Build artifacts");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Iterating Build artifacts");
                     sb.Clear();
                     if (firstProject)
                     {
@@ -590,12 +604,12 @@ public class Program
                     buildcounter = 0;
                     foreach (var buildtoIterate in allBuildsToIterate)
                     {
-                        Builds builds = JsonSerializer.Deserialize<Builds>(InvokeRestCall(projectUrl, $"_apis/build/builds/?definitions={buildtoIterate.definition.id}&$top={programOptions.BuildCount}&minTime={programOptions.FromDate}&api-version=7.0"));
-                        ConsoleWrite($"Building csv for {builds.value.Count} builds. Build Definition {buildtoIterate.definition.name} - {defcounter++} of {buildsToIterate.value.Count}");
+                        Builds builds = JsonSerializer.Deserialize<Builds>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/build/builds/?definitions={buildtoIterate.definition.id}&$top={programOptions.BuildCount}&minTime={programOptions.FromDate}&api-version=7.0", programOptions.Token));
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Building csv for {builds.value.Count} builds. Build Definition {buildtoIterate.definition.name} - {defcounter++} of {buildsToIterate.value.Count}");
                         foreach (var build in builds.value)
                         {
-                            BuildArtifacts buildartifacts = JsonSerializer.Deserialize<BuildArtifacts>(InvokeRestCall(projectUrl, $"_apis/build/builds/{build.id}/artifacts?api-version=7.0"));
-                            ConsoleWrite($"Building csv for {build.buildNumber} artifacts. Build Definition {build.definition.name}");
+                            BuildArtifacts buildartifacts = JsonSerializer.Deserialize<BuildArtifacts>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/build/builds/{build.id}/artifacts?api-version=7.0", programOptions.Token));
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Building csv for {build.buildNumber} artifacts. Build Definition {build.definition.name}");
                             foreach (var artifact in buildartifacts.value)
                             {
                                 sb.Append(projectUrl + "," + build.id + "," + build.buildNumber + "," + build.definition.name + ",");
@@ -607,7 +621,7 @@ public class Program
                     }
 
                     programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-buildartifacts.csv");
-                    ConsoleWrite($"Writing {buildcounter} build artifacts to {programOptions.OutputFile}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} build artifacts to {programOptions.OutputFile}");
                     File.AppendAllText(programOptions.OutputFile, sb.ToString());
                     sb.Clear();
                 }
@@ -616,27 +630,30 @@ public class Program
             if (!programOptions.SkipPullRequests)
             {
                 List<PullRequest> allPullRequests = new ();
-                ConsoleWrite($"Retrieving Pull Requests from {projectName}");
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Pull Requests from {projectName}");
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : programOptions.Branch;
-                    string pullRequestJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=7.0");
+                    string pullRequestJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=7.0", programOptions.Token);
                     if (!string.IsNullOrEmpty(pullRequestJson))
                     {
                         PullRequests pullRequests = JsonSerializer.Deserialize<PullRequests>(pullRequestJson);
                         if (pullRequests.value.Count > 0)
                         {
-                            ConsoleWrite($"\tRetrieved {pullRequests.value.Count} pull requests from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {pullRequests.value.Count} pull requests from {repo.name}");
                             allPullRequests.AddRange(pullRequests.value);
+                        }
+                        else
+                        {
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved 0 pull requests from {repo.name}");
                         }
                     }
                     else
                     {
-                        ConsoleWrite($"\tWARNING: Unable to retrieve pull requests from {repo.name}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve pull requests from {repo.name}");
                     }
                 }
 
-                ConsoleWrite($"Building csv for {allPullRequests.Count} Pull Requests");
                 sb.Clear();
                 if (firstProject)
                 {
@@ -647,7 +664,7 @@ public class Program
                 {
                     TimeSpan pullRequestDuration = pullRequest.closedDate - pullRequest.creationDate;
                     sb.Append(projectUrl + "," + pullRequest.pullRequestId + "," + pullRequest.repository.name + "," + pullRequest.targetRefName + "," + pullRequest.reviewers.Count + "," + pullRequest.completionOptions?.mergeStrategy + "," ?? string.Empty + ",");
-                    sb.Append(pullRequest.creationDate + "," + pullRequest.closedDate + "," + StringToCSVCell(pullRequest.createdBy.displayName) + "," + pullRequest.createdBy.uniqueName + ",");
+                    sb.Append(pullRequest.creationDate + "," + pullRequest.closedDate + "," + StringHelper.StringToCSVCell(pullRequest.createdBy.displayName) + "," + pullRequest.createdBy.uniqueName + ",");
                     sb.Append(pullRequest.creationDate.ToLocalTime().Year + "," + pullRequest.creationDate.ToLocalTime().Month + "," + pullRequest.creationDate.ToLocalTime().Day + "," + pullRequest.creationDate.ToLocalTime().DayOfWeek + ",");
                     sb.Append(currentCulture.Calendar.GetWeekOfYear(pullRequest.creationDate.ToLocalTime(), currentCulture.DateTimeFormat.CalendarWeekRule, currentCulture.DateTimeFormat.FirstDayOfWeek) + ",");
                     sb.Append(pullRequest.creationDate.ToLocalTime().Hour + "," + pullRequestDuration.TotalHours.ToString("#0") + "," + pullRequestDuration.TotalDays.ToString("#0"));
@@ -655,7 +672,7 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-pullrequests.csv");
-                ConsoleWrite($"Writing {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPullRequests.Count} Pull Requests to {programOptions.OutputFile}");
                 File.AppendAllText(programOptions.OutputFile, sb.ToString());
                 sb.Clear();
             }
@@ -664,83 +681,14 @@ public class Program
         }
 
         TimeSpan t = DateTime.Now - start;
-        ConsoleWrite($"Analysis Completed {t.TotalMinutes}m: {t.Seconds}s");
-    }
-
-    /// <summary>
-    /// Turn a string into a CSV cell output.
-    /// </summary>
-    private static string StringToCSVCell(string str)
-    {
-        bool mustQuote = str.Contains(',') || str.Contains('"') || str.Contains('\r') || str.Contains('\n');
-        if (mustQuote)
-        {
-            StringBuilder sb = new ();
-            sb.Append('"');
-            foreach (char nextChar in str)
-            {
-                sb.Append(nextChar);
-                if (nextChar == '"')
-                {
-                    sb.Append('"');
-                }
-            }
-
-            sb.Append('"');
-            return sb.ToString();
-        }
-
-        return str;
-    }
-
-    private static void AppendChildAreaPaths(string projectUrl, Child path, StringBuilder sb, string projectName)
-    {
-        if (path.children.Count > 0)
-        {
-            foreach (var child in path.children)
-            {
-                sb.AppendLine(projectUrl + "," + child.path.Replace($"\\{projectName}\\Area", projectName) + "," + child.name);
-                if (child.hasChildren)
-                {
-                    AppendChildAreaPaths(projectUrl, child, sb, projectName);
-                }
-            }
-        }
-        else
-        {
-            sb.AppendLine(projectUrl + "," + path.path.Replace($"\\{projectName}\\Area", projectName) + "," + path.name);
-        }
+        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Analysis Completed {t.Minutes}m: {t.Seconds}s");
     }
 
     private static void HandleParseError(IEnumerable<Error> errs)
     {
         foreach (var error in errs)
         {
-            ConsoleWrite($"Error = {error.Tag}");
-        }
-    }
-
-    private static void WriteHeader()
-    {
-        Console.WriteLine("----------------------------------------------------------------------");
-        Console.WriteLine("    AzureDevOpsAnalyzer");
-        Console.WriteLine("----------------------------------------------------------------------\n");
-    }
-
-    private static void ConsoleWrite(string message) => Console.WriteLine(programOptions.Verbose ? $"{DateTime.Now} {message}" : $"{message}");
-
-    private static string InvokeRestCall(string baseaddress, string url)
-    {
-        using (HttpClient client = new ())
-        {
-            string creds = Convert.ToBase64String(Encoding.ASCII.GetBytes($":{programOptions.Token}"));
-            client.BaseAddress = new Uri($"{baseaddress}/");
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", creds);
-            var response = client.GetAsync(url).Result;
-            string content = response.Content.ReadAsStringAsync().Result;
-            return response.IsSuccessStatusCode ? content : null;
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Error = {error.Tag}");
         }
     }
 }

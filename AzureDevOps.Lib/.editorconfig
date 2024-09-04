@@ -217,3 +217,10 @@ dotnet_diagnostic.SA0001.severity = none
 
 # SA1636:
 dotnet_diagnostic.SA1636.severity = none
+
+[*.{cs,vb}]
+dotnet_diagnostic.IDE0028.severity = none
+dotnet_style_operator_placement_when_wrapping = beginning_of_line
+tab_width = 4
+indent_size = 4
+end_of_line = crlf

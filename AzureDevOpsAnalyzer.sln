@@ -1,14 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30914.41
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35222.181
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureDevOpsAnalyzer", "AzureDevOpsAnalyzer.csproj", "{712F7BE3-2CB4-4A1A-9BD0-C99BCBDD4DD4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureDevOpsAnalyzer", "AzureDevOpsAnalyzer\AzureDevOpsAnalyzer.csproj", "{712F7BE3-2CB4-4A1A-9BD0-C99BCBDD4DD4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9DA86E0D-9FF7-40A4-B308-7B46F2A73C28}"
-	ProjectSection(SolutionItems) = preProject
-		.editorconfig = .editorconfig
-	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureDevOps.Lib", "AzureDevOps.Lib\AzureDevOps.Lib.csproj", "{BBB29A8B-5116-45A7-89B0-8F95340A12D4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Helper.Lib", "Helper.Lib\Helper.Lib.csproj", "{7F49E68D-9119-4706-A5FD-310AABB9466C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libs", "Libs", "{B29416AA-327D-4D4B-948A-9B051D3DDC16}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,9 +23,21 @@ Global
 		{712F7BE3-2CB4-4A1A-9BD0-C99BCBDD4DD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{712F7BE3-2CB4-4A1A-9BD0-C99BCBDD4DD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{712F7BE3-2CB4-4A1A-9BD0-C99BCBDD4DD4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BBB29A8B-5116-45A7-89B0-8F95340A12D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BBB29A8B-5116-45A7-89B0-8F95340A12D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BBB29A8B-5116-45A7-89B0-8F95340A12D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BBB29A8B-5116-45A7-89B0-8F95340A12D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F49E68D-9119-4706-A5FD-310AABB9466C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F49E68D-9119-4706-A5FD-310AABB9466C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F49E68D-9119-4706-A5FD-310AABB9466C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F49E68D-9119-4706-A5FD-310AABB9466C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{BBB29A8B-5116-45A7-89B0-8F95340A12D4} = {B29416AA-327D-4D4B-948A-9B051D3DDC16}
+		{7F49E68D-9119-4706-A5FD-310AABB9466C} = {B29416AA-327D-4D4B-948A-9B051D3DDC16}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E79971C6-2DC0-44A3-A99C-D1505F5A5D5D}

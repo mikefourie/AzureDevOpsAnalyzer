@@ -29,7 +29,7 @@ public class Program
         DateTime start = DateTime.Now;
         List<Project> allProjects = new ();
         List<Team> allTeams = new ();
-
+        string currentDirectory = Directory.GetCurrentDirectory();
         ConsoleHelper.WriteHeader("    AzureDevOpsAnalyzer");
         var result = Parser.Default.ParseArguments<Options>(args)
                 .WithParsed(o =>
@@ -71,7 +71,7 @@ public class Program
                 sb.AppendLine();
             }
 
-            programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"projects.csv");
+            programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"projects.csv");
             ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allProjects.Count} Projects to {programOptions.OutputFile}");
             File.WriteAllText(programOptions.OutputFile, sb.ToString());
             sb.Clear();
@@ -101,7 +101,7 @@ public class Program
                 sb.AppendLine();
             }
 
-            programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"teams.csv");
+            programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"teams.csv");
             ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allTeams.Count} Teams to {programOptions.OutputFile}");
             File.WriteAllText(programOptions.OutputFile, sb.ToString());
             sb.Clear();
@@ -139,7 +139,7 @@ public class Program
                     sb.AppendLine();
                 }
 
-                programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"teammembers.csv");
+                programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"teammembers.csv");
                 ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {team.name} Team members to {programOptions.OutputFile}");
                 if (firstTeam)
                 {
@@ -159,113 +159,30 @@ public class Program
         bool firstProject = true;
         foreach (string projectUrl in projectUrls)
         {
-            Repositories repositories = new () { value = new List<Value>() };
             string[] projectParts = projectUrl.Split("/");
             string projectName = projectParts[^1];
             string filePrefix = projectUrls.Length > 1 ? "multi" : projectName;
-            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Analyzing Project: {projectName}");
-            ConsoleHelper.ConsoleWrite(programOptions.Verbose, "Retrieving Repositories");
-            Repositories allrepositories = JsonSerializer.Deserialize<Repositories>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, "_apis/git/repositories?api-version=7.0", programOptions.Token));
-            if (!string.IsNullOrEmpty(programOptions.Filter))
-            {
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, "Applying Filters");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"{allrepositories.value.Count} Repositories to consider in {projectName}");
-                string[] repositoryFilters = programOptions.Filter.Split(",");
-                foreach (var repo in allrepositories.value.OrderBy(r => r.name))
-                {
-                    // if we are excluding repos
-                    if (programOptions.Exclusion)
-                    {
-                        bool exclude = false;
-
-                        foreach (string filter in repositoryFilters)
-                        {
-                            Match m = Regex.Match(repo.name, filter, RegexOptions.IgnoreCase);
-                            if (m.Success)
-                            {
-                                // we have a match so exclude and break to save cycles
-                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Excluding {repo.name} per filter: {filter}");
-                                exclude = true;
-                                break;
-                            }
-                        }
-
-                        if (!exclude)
-                        {
-                            repositories.value.Add(repo);
-                        }
-                    }
-                    else
-                    {
-                        bool include = false;
-
-                        // we are including based on filter
-                        foreach (string filter in repositoryFilters)
-                        {
-                            Match m = Regex.Match(repo.name, filter, RegexOptions.IgnoreCase);
-                            if (m.Success)
-                            {
-                                // we have a match so exclude and break to save cycles
-                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Including {repo.name} per filter: {filter}");
-                                include = true;
-                                break;
-                            }
-                            else
-                            {
-                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Excluding {repo.name} per filter: {filter}");
-                            }
-                        }
-
-                        if (include)
-                        {
-                            repositories.value.Add(repo);
-                        }
-                    }
-                }
-
-                repositories.count = repositories.value.Count;
-            }
-            else
-            {
-                foreach (var repo in allrepositories.value.OrderBy(r => r.name))
-                {
-                    repositories.value.Add(repo);
-                }
-            }
-
-            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Repositories to Analyze: {repositories.value.Count}");
-
-            int repoCount = 0;
-            foreach (var repo in repositories.value)
-            {
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"{++repoCount}. {repo.name}");
-            }
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Analyzing {projectName}, retrieving Repositories");
+            Repositories repositories = AzureDevOpsHelper.GetRepositoriesAsync(httpClientFactory, projectUrl, "_apis/git/repositories?api-version=7.0", programOptions.Filter, programOptions.Exclusion, programOptions.Token).Result;
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Repositories to Analyze: {repositories.count}");
 
             if (firstProject)
             {
                 sb.AppendLine("projecturl,defaultBranch,id,name,project,remoteUrl,sshUrl,url,webUrl,size");
             }
 
+            int repoCount = 0;
             foreach (var repo in repositories.value)
             {
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"{++repoCount}. {repo.name}");
                 sb.Append(projectUrl + "," + repo.defaultBranch + "," + repo.id + "," + repo.name + "," + repo.project.name + ",");
                 sb.Append(repo.remoteUrl + "," + repo.sshUrl + "," + repo.url + "," + repo.webUrl + "," + repo.size + ",");
                 sb.AppendLine();
             }
 
-            programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-repositories.csv");
+            programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-repositories.csv");
             ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {programOptions.OutputFile}");
-
-            if (firstProject)
-            {
-                File.WriteAllText(programOptions.OutputFile, sb.ToString());
-            }
-            else
-            {
-                File.AppendAllText(programOptions.OutputFile, sb.ToString());
-            }
-
-            sb.Clear();
+            WriteToFile(sb, firstProject);
 
             if (!Convert.ToBoolean(programOptions.SkipBase))
             {
@@ -297,10 +214,9 @@ public class Program
                         sb.AppendLine(projectUrl + "," + areaPaths.path + "," + areaPaths.name);
                     }
 
-                    programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-areapaths.csv");
+                    programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-areapaths.csv");
                     ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {programOptions.OutputFile}");
-                    File.AppendAllText(programOptions.OutputFile, sb.ToString());
-                    sb.Clear();
+                    WriteToFile(sb, firstProject);
                 }
 
                 // Get all team area paths
@@ -334,18 +250,9 @@ public class Program
                         ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve team area paths from {team.name} in {team.projectName}");
                     }
 
-                    programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-teamareapaths.csv");
-                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {team.name} Team area paths to {programOptions.OutputFile}");
-                    if (firstTeamAreaPath)
-                    {
-                        File.WriteAllText(programOptions.OutputFile, sb.ToString());
-                    }
-                    else
-                    {
-                        File.AppendAllText(programOptions.OutputFile, sb.ToString());
-                    }
-
-                    sb.Clear();
+                    programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-teamareapaths.csv");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {team.name} Team area paths for {projectName} to {programOptions.OutputFile}");
+                    WriteToFile(sb, firstTeamAreaPath);
                     firstTeamAreaPath = false;
                 }
             }
@@ -356,7 +263,6 @@ public class Program
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch.Replace("refs/heads/", string.Empty) : programOptions.Branch;
-                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Commits from {repo.name} ({branchToScan})");
                     try
                     {
                         string commitJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.itemVersion.version={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token);
@@ -371,21 +277,21 @@ public class Program
                                 }
 
                                 allCommits.AddRange(commitHistory.value);
-                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {commitHistory.value.Count} commits from {repo.name}");
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {commitHistory.value.Count} commits from {repo.name} ({branchToScan})");
                             }
                             else
                             {
-                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved 0 commits from {repo.name}");
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 commits from {repo.name} ({branchToScan})");
                             }
                         }
                         else
                         {
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve commit history from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"WARNING: Unable to retrieve commit history from {repo.name} ({branchToScan})");
                         }
                     }
                     catch (Exception ex)
                     {
-                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\t{branchToScan} not found {ex}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"{branchToScan} not found {ex}");
                     }
                 }
 
@@ -423,15 +329,13 @@ public class Program
                     sb.AppendLine();
                 }
 
-                programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-commits.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits to {programOptions.OutputFile}");
-                File.AppendAllText(programOptions.OutputFile, sb.ToString());
-                sb.Clear();
+                programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-commits.csv");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits for {projectName} to {programOptions.OutputFile}");
+                WriteToFile(sb, firstProject);
 
                 allCommits = new ();
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
-                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving ALL Commits from {repo.name}");
                     try
                     {
                         string commitJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token);
@@ -441,21 +345,21 @@ public class Program
                             if (commitHistory.value.Count > 0)
                             {
                                 allCommits.AddRange(commitHistory.value);
-                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {commitHistory.value.Count} commits from {repo.name}");
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {commitHistory.value.Count} commits from {repo.name} (nobranches)");
                             }
                             else
                             {
-                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved 0 commits from {repo.name}");
+                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 commits from {repo.name} (nobranches)");
                             }
                         }
                         else
                         {
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve commit history from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"WARNING: Unable to retrieve commit history from {repo.name} (nobranches)");
                         }
                     }
                     catch (Exception ex)
                     {
-                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tError {ex}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Error {ex}");
                     }
                 }
 
@@ -493,10 +397,9 @@ public class Program
                     sb.AppendLine();
                 }
 
-                programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-ALLcommits.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits to {programOptions.OutputFile}");
-                File.AppendAllText(programOptions.OutputFile, sb.ToString());
-                sb.Clear();
+                programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-ALLcommits.csv");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits for {projectName} to {programOptions.OutputFile}");
+                WriteToFile(sb, firstProject);
             }
 
             if (!programOptions.SkipPushes)
@@ -505,7 +408,6 @@ public class Program
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
-                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Pushes from {repo.name} ({branchToScan})");
                     string pushesJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token);
                     if (!string.IsNullOrEmpty(pushesJson))
                     {
@@ -518,16 +420,16 @@ public class Program
                             }
 
                             allPushes.AddRange(pushes.value);
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {pushes.value.Count} pushes from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {pushes.value.Count} pushes from {repo.name} ({branchToScan})");
                         }
                         else
                         {
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved 0 pushes from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 pushes from {repo.name} ({branchToScan})");
                         }
                     }
                     else
                     {
-                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve pushes from {repo.name}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"WARNING: Unable to retrieve pushes from {repo.name} ({branchToScan})");
                     }
                 }
 
@@ -546,10 +448,9 @@ public class Program
                     sb.AppendLine();
                 }
 
-                programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-pushes.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPushes.Count} pushes to {programOptions.OutputFile}");
-                File.AppendAllText(programOptions.OutputFile, sb.ToString());
-                sb.Clear();
+                programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-pushes.csv");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPushes.Count} pushes for {projectName} to {programOptions.OutputFile}");
+                WriteToFile(sb, firstProject);
             }
 
             if (!Convert.ToBoolean(programOptions.SkipBuilds))
@@ -586,10 +487,9 @@ public class Program
                     }
                 }
 
-                programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-builds.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} builds to {programOptions.OutputFile}");
-                File.AppendAllText(programOptions.OutputFile, sb.ToString());
-                sb.Clear();
+                programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-builds.csv");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} builds for {projectName} to {programOptions.OutputFile}");
+                WriteToFile(sb, firstProject);
 
                 if (!Convert.ToBoolean(programOptions.SkipBuildArtifacts))
                 {
@@ -620,17 +520,15 @@ public class Program
                         }
                     }
 
-                    programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-buildartifacts.csv");
-                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} build artifacts to {programOptions.OutputFile}");
-                    File.AppendAllText(programOptions.OutputFile, sb.ToString());
-                    sb.Clear();
+                    programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-buildartifacts.csv");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} build artifacts for {projectName} to {programOptions.OutputFile}");
+                    WriteToFile(sb, firstProject);
                 }
             }
 
             if (!programOptions.SkipPullRequests)
             {
                 List<PullRequest> allPullRequests = new ();
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Pull Requests from {projectName}");
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : programOptions.Branch;
@@ -650,7 +548,7 @@ public class Program
                     }
                     else
                     {
-                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve pull requests from {repo.name}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve pull requests from - {repo.name}");
                     }
                 }
 
@@ -671,10 +569,9 @@ public class Program
                     sb.AppendLine();
                 }
 
-                programOptions.OutputFile = Path.Combine($"{Directory.GetCurrentDirectory()}", $"{filePrefix}-pullrequests.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPullRequests.Count} Pull Requests to {programOptions.OutputFile}");
-                File.AppendAllText(programOptions.OutputFile, sb.ToString());
-                sb.Clear();
+                programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-pullrequests.csv");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPullRequests.Count} Pull Requests for {projectName} to {programOptions.OutputFile}");
+                WriteToFile(sb, firstProject);
             }
 
             firstProject = false;
@@ -682,6 +579,20 @@ public class Program
 
         TimeSpan t = DateTime.Now - start;
         ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Analysis Completed {t.Minutes}m: {t.Seconds}s");
+    }
+
+    private static void WriteToFile(StringBuilder sb, bool firstProject)
+    {
+        if (firstProject)
+        {
+            File.WriteAllText(programOptions.OutputFile, sb.ToString());
+        }
+        else
+        {
+            File.AppendAllText(programOptions.OutputFile, sb.ToString());
+        }
+
+        sb.Clear();
     }
 
     private static void HandleParseError(IEnumerable<Error> errs)

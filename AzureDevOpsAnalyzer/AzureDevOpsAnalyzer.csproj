@@ -15,6 +15,5 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\AzureDevOps.Lib\AzureDevOps.Lib.csproj" />
-	  <ProjectReference Include="..\Helper.Lib\Helper.Lib.csproj" />
 	</ItemGroup>
 </Project>

@@ -538,17 +538,17 @@ public class Program
                         PullRequests pullRequests = JsonSerializer.Deserialize<PullRequests>(pullRequestJson);
                         if (pullRequests.value.Count > 0)
                         {
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {pullRequests.value.Count} pull requests from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {pullRequests.value.Count} pull requests from {repo.name}");
                             allPullRequests.AddRange(pullRequests.value);
                         }
                         else
                         {
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved 0 pull requests from {repo.name}");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 pull requests from {repo.name}");
                         }
                     }
                     else
                     {
-                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tWARNING: Unable to retrieve pull requests from - {repo.name}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"WARNING: Unable to retrieve pull requests from - {repo.name}");
                     }
                 }
 

@@ -18,6 +18,8 @@ e.g. AzureDevOpsAnalyzer.exe -t YOURPAT -u https://dev.azure.com/YOURORG/YOURPRO
 
   -u, --project             Required. Set the Project Urls to scan. Comma separated
 
+  -x, --collection          Set the Collection Url to scan.
+
   -t, --token               Set personal access token to use
 
   -o, --outputfile          Set name of the CSV file
@@ -34,10 +36,13 @@ e.g. AzureDevOpsAnalyzer.exe -t YOURPAT -u https://dev.azure.com/YOURORG/YOURPRO
 
   -s, --skipbuilds          (Default: true) Set whether to skip collecting builds
 
+  -w, --skipbuildartifacts  (Default: true) Set whether to skip collecting build artifacts
+
+  -a, --skipbase            (Default: true) Set whether to skip collecting Base info like Teams, AreaPaths etc
+
   -k, --skippullrequests    (Default: false) Set whether to skip collecting pull requests
 
-  -r, --branch              Set the branch to scan. Defaults to the default branch per repository for Commits and
-                            Pushes.
+  -r, --branch              Set the branch to scan. Defaults to the default branch per repository for Commits and Pushes.
 
   -l, --nomessages          (Default: false) Set whether to skip saving commit messages
 

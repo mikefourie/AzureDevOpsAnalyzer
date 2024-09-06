@@ -78,8 +78,7 @@ public class AzureDevOpsHelper
         }
         else
         {
-            repositories.value.AddRange(allrepositories.value);
-            repositories.value.Sort((r1, r2) => string.Compare(r1.name, r2.name, StringComparison.Ordinal));
+            repositories.value.AddRange(allrepositories.value.OrderBy(r => r.name));
         }
 
         repositories.count = repositories.value.Count;

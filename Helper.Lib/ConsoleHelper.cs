@@ -11,5 +11,10 @@ public class ConsoleHelper
         Console.WriteLine("----------------------------------------------------------------------\n");
     }
 
-    public static void ConsoleWrite(bool verbose, string message) => Console.WriteLine(verbose ? $"{DateTime.Now} {message}" : $"{message}");
+    public static void ConsoleWrite(bool verbose, string message, ConsoleColor color = ConsoleColor.White)
+    {
+        Console.ForegroundColor = color;
+        Console.WriteLine(verbose ? $"{DateTime.Now} {message}" : $"{message}", color);
+        Console.ResetColor();
+    }
 }

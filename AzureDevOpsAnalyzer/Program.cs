@@ -72,7 +72,7 @@ public class Program
             }
 
             programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"projects.csv");
-            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allProjects.Count} Projects to {programOptions.OutputFile}");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allProjects.Count} Projects to {programOptions.OutputFile}", ConsoleColor.Green);
             File.WriteAllText(programOptions.OutputFile, sb.ToString());
             sb.Clear();
 
@@ -102,7 +102,7 @@ public class Program
             }
 
             programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"teams.csv");
-            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allTeams.Count} Teams to {programOptions.OutputFile}");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allTeams.Count} Teams to {programOptions.OutputFile}", ConsoleColor.Green);
             File.WriteAllText(programOptions.OutputFile, sb.ToString());
             sb.Clear();
 
@@ -140,7 +140,7 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"teammembers.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {team.name} Team members to {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {team.name} Team members to {programOptions.OutputFile}", ConsoleColor.Green);
                 if (firstTeam)
                 {
                     File.WriteAllText(programOptions.OutputFile, sb.ToString());
@@ -181,7 +181,7 @@ public class Program
             }
 
             programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-repositories.csv");
-            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {programOptions.OutputFile}");
+            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {programOptions.OutputFile}", ConsoleColor.Green);
             WriteToFile(sb, firstProject);
 
             if (!Convert.ToBoolean(programOptions.SkipBase))
@@ -215,7 +215,7 @@ public class Program
                     }
 
                     programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-areapaths.csv");
-                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {programOptions.OutputFile}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {programOptions.OutputFile}", ConsoleColor.Green);
                     WriteToFile(sb, firstProject);
                 }
 
@@ -251,7 +251,7 @@ public class Program
                     }
 
                     programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-teamareapaths.csv");
-                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {team.name} Team area paths for {projectName} to {programOptions.OutputFile}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {team.name} Team area paths for {projectName} to {programOptions.OutputFile}", ConsoleColor.Green);
                     WriteToFile(sb, firstTeamAreaPath);
                     firstTeamAreaPath = false;
                 }
@@ -330,7 +330,7 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-commits.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits for {projectName} to {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits for {projectName} to {programOptions.OutputFile}", ConsoleColor.Green);
                 WriteToFile(sb, firstProject);
 
                 allCommits = new ();
@@ -398,7 +398,7 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-ALLcommits.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits for {projectName} to {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits for {projectName} to {programOptions.OutputFile}", ConsoleColor.Green);
                 WriteToFile(sb, firstProject);
             }
 
@@ -449,7 +449,7 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-pushes.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPushes.Count} pushes for {projectName} to {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPushes.Count} pushes for {projectName} to {programOptions.OutputFile}", ConsoleColor.Green);
                 WriteToFile(sb, firstProject);
             }
 
@@ -488,7 +488,7 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-builds.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} builds for {projectName} to {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} builds for {projectName} to {programOptions.OutputFile}", ConsoleColor.Green);
                 WriteToFile(sb, firstProject);
 
                 if (!Convert.ToBoolean(programOptions.SkipBuildArtifacts))
@@ -521,7 +521,7 @@ public class Program
                     }
 
                     programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-buildartifacts.csv");
-                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} build artifacts for {projectName} to {programOptions.OutputFile}");
+                    ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {buildcounter} build artifacts for {projectName} to {programOptions.OutputFile}", ConsoleColor.Green);
                     WriteToFile(sb, firstProject);
                 }
             }
@@ -570,7 +570,7 @@ public class Program
                 }
 
                 programOptions.OutputFile = Path.Combine($"{currentDirectory}", $"{filePrefix}-pullrequests.csv");
-                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPullRequests.Count} Pull Requests for {projectName} to {programOptions.OutputFile}");
+                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allPullRequests.Count} Pull Requests for {projectName} to {programOptions.OutputFile}", ConsoleColor.Green);
                 WriteToFile(sb, firstProject);
             }
 
@@ -578,7 +578,7 @@ public class Program
         }
 
         TimeSpan t = DateTime.Now - start;
-        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Analysis Completed {t.Minutes}m: {t.Seconds}s");
+        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Analysis Completed in {t.Minutes}m: {t.Seconds}s");
     }
 
     private static void WriteToFile(StringBuilder sb, bool firstProject)

@@ -259,7 +259,7 @@ public class Program
             if (!programOptions.SkipCommits)
             {
                 List<Commit> allCommits = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch.Replace("refs/heads/", string.Empty) : programOptions.Branch;
                     try
@@ -343,27 +343,19 @@ public class Program
                 WriteToFile(sb, firstProject);
 
                 allCommits = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true))
                 {
                     try
                     {
-                        string commitJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token);
-                        if (!string.IsNullOrEmpty(commitJson))
+                        CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/commits?searchCriteria.$top={programOptions.CommitCount}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token));
+                        if (commitHistory.value.Count > 0)
                         {
-                            CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(commitJson);
-                            if (commitHistory.value.Count > 0)
-                            {
-                                allCommits.AddRange(commitHistory.value);
-                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {commitHistory.value.Count} commits from {repo.name} (nobranches)");
-                            }
-                            else
-                            {
-                                ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 commits from {repo.name} (nobranches)");
-                            }
+                            allCommits.AddRange(commitHistory.value);
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {commitHistory.value.Count} commits from {repo.name} (nobranches)");
                         }
                         else
                         {
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"WARNING: Unable to retrieve commit history from {repo.name} (nobranches)");
+                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 commits from {repo.name} (nobranches)");
                         }
                     }
                     catch (Exception ex)
@@ -414,31 +406,23 @@ public class Program
             if (!programOptions.SkipPushes)
             {
                 List<Push> allPushes = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
-                    string pushesJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token);
-                    if (!string.IsNullOrEmpty(pushesJson))
+                    Pushes pushes = JsonSerializer.Deserialize<Pushes>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/pushes?$top={programOptions.PushCount}&searchCriteria.refName={branchToScan}&searchCriteria.fromDate={programOptions.FromDate}&api-version=7.0", programOptions.Token));
+                    if (pushes.value.Count > 0)
                     {
-                        Pushes pushes = JsonSerializer.Deserialize<Pushes>(pushesJson);
-                        if (pushes.value.Count > 0)
+                        foreach (Push item in pushes.value)
                         {
-                            foreach (Push item in pushes.value)
-                            {
-                                item.branch = branchToScan;
-                            }
+                            item.branch = branchToScan;
+                        }
 
-                            allPushes.AddRange(pushes.value);
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {pushes.value.Count} pushes from {repo.name} ({branchToScan})");
-                        }
-                        else
-                        {
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 pushes from {repo.name} ({branchToScan})");
-                        }
+                        allPushes.AddRange(pushes.value);
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {pushes.value.Count} pushes from {repo.name} ({branchToScan})");
                     }
                     else
                     {
-                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"WARNING: Unable to retrieve pushes from {repo.name} ({branchToScan})");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 pushes from {repo.name} ({branchToScan})");
                     }
                 }
 
@@ -538,26 +522,18 @@ public class Program
             if (!programOptions.SkipPullRequests)
             {
                 List<PullRequest> allPullRequests = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : programOptions.Branch;
-                    string pullRequestJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=7.0", programOptions.Token);
-                    if (!string.IsNullOrEmpty(pullRequestJson))
+                    PullRequests pullRequests = JsonSerializer.Deserialize<PullRequests>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=7.0", programOptions.Token));
+                    if (pullRequests.value.Count > 0)
                     {
-                        PullRequests pullRequests = JsonSerializer.Deserialize<PullRequests>(pullRequestJson);
-                        if (pullRequests.value.Count > 0)
-                        {
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {pullRequests.value.Count} pull requests from {repo.name}");
-                            allPullRequests.AddRange(pullRequests.value);
-                        }
-                        else
-                        {
-                            ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 pull requests from {repo.name}");
-                        }
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved {pullRequests.value.Count} pull requests from {repo.name}");
+                        allPullRequests.AddRange(pullRequests.value);
                     }
                     else
                     {
-                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"WARNING: Unable to retrieve pull requests from - {repo.name}");
+                        ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieved 0 pull requests from {repo.name}");
                     }
                 }
 

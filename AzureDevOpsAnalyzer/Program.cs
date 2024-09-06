@@ -6,7 +6,6 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AzureDevOps.Lib;
 using CommandLine;
@@ -168,7 +167,7 @@ public class Program
 
             if (firstProject)
             {
-                sb.AppendLine("projecturl,defaultBranch,id,name,project,remoteUrl,sshUrl,url,webUrl,size");
+                sb.AppendLine("projecturl,defaultBranch,id,name,project,remoteUrl,sshUrl,url,webUrl,size,isDisabled");
             }
 
             int repoCount = 0;
@@ -176,7 +175,7 @@ public class Program
             {
                 ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"{++repoCount}. {repo.name}");
                 sb.Append(projectUrl + "," + repo.defaultBranch + "," + repo.id + "," + repo.name + "," + repo.project.name + ",");
-                sb.Append(repo.remoteUrl + "," + repo.sshUrl + "," + repo.url + "," + repo.webUrl + "," + repo.size + ",");
+                sb.Append(repo.remoteUrl + "," + repo.sshUrl + "," + repo.url + "," + repo.webUrl + "," + repo.size + "," + repo.isDisabled);
                 sb.AppendLine();
             }
 
@@ -271,9 +270,19 @@ public class Program
                             CommitHistory commitHistory = JsonSerializer.Deserialize<CommitHistory>(commitJson);
                             if (commitHistory.value.Count > 0)
                             {
-                                foreach (Commit item in commitHistory.value)
+                                if (commitHistory.value.Count > 5000)
                                 {
-                                    item.branch = branchToScan;
+                                    Parallel.ForEach(commitHistory.value, item =>
+                                    {
+                                        item.branch = branchToScan;
+                                    });
+                                }
+                                else
+                                {
+                                    foreach (Commit item in commitHistory.value)
+                                    {
+                                        item.branch = branchToScan;
+                                    }
                                 }
 
                                 allCommits.AddRange(commitHistory.value);

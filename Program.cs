@@ -348,7 +348,7 @@ public class Program
             if (!programOptions.SkipCommits)
             {
                 List<Commit> allCommits = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch.Replace("refs/heads/", string.Empty) : programOptions.Branch;
                     ConsoleWrite($"Retrieving Commits from {repo.name} ({branchToScan})");
@@ -421,7 +421,7 @@ public class Program
                 sb.Clear();
 
                 allCommits = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     ConsoleWrite($"Retrieving ALL Commits from {repo.name}");
                     try
@@ -491,7 +491,7 @@ public class Program
             if (!programOptions.SkipPushes)
             {
                 List<Push> allPushes = new ();
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
                     ConsoleWrite($"Retrieving Pushes from {repo.name} ({branchToScan})");
@@ -617,7 +617,7 @@ public class Program
             {
                 List<PullRequest> allPullRequests = new ();
                 ConsoleWrite($"Retrieving Pull Requests from {projectName}");
-                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true && r.remoteUrl.StartsWith(projectUrl)).OrderBy(r => r.name))
+                foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true).OrderBy(r => r.name))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : programOptions.Branch;
                     string pullRequestJson = InvokeRestCall(projectUrl, $"_apis/git/repositories/{repo.name}/pullrequests?searchCriteria.status=completed&searchCriteria.targetRefName={branchToScan}&$top={programOptions.PullRequestCount}&api-version=7.0");

@@ -14,20 +14,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 public class Program
 {
-    private static Options programOptions = new();
+    private static Options programOptions = new ();
 
     public static async Task Main(string[] args)
     {
-        ServiceCollection services = new();
+        ServiceCollection services = new ();
         services.AddHttpClient();
         ServiceProvider provider = services.BuildServiceProvider();
         IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
 
         CultureInfo currentCulture = CultureInfo.CurrentCulture;
-        StringBuilder sb = new();
+        StringBuilder sb = new ();
         DateTime start = DateTime.Now;
-        List<Project> allProjects = new();
-        List<Team> allTeams = new();
+        List<Project> allProjects = new ();
+        List<Team> allTeams = new ();
         string currentDirectory = Directory.GetCurrentDirectory();
         ConsoleHelper.WriteHeader("    AzureDevOpsAnalyzer");
         var result = Parser.Default.ParseArguments<Options>(args)
@@ -109,7 +109,7 @@ public class Program
             bool firstTeam = true;
             foreach (var team in allTeams)
             {
-                List<TeamMember> allTeamMembers = new();
+                List<TeamMember> allTeamMembers = new ();
                 ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Team members for {team.name}");
                 string teamMembersJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), programOptions.CollectionUrl, $"_apis/projects/{team.projectName}/teams/{team.name}/members?api-version=7.0-preview", programOptions.Token);
                 if (!string.IsNullOrEmpty(teamMembersJson))
@@ -185,7 +185,7 @@ public class Program
 
             if (!Convert.ToBoolean(programOptions.SkipBase))
             {
-                List<AreaPath> allAreaPaths = new();
+                List<AreaPath> allAreaPaths = new ();
                 ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Area Paths from {projectName}");
 
                 string areapathJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/wit/classificationnodes/areas?$depth=100&api-version=7.0", programOptions.Token);
@@ -222,7 +222,7 @@ public class Program
                 bool firstTeamAreaPath = true;
                 foreach (var team in allTeams)
                 {
-                    List<TeamAreaPathConfig> allTeamAreaPathConfig = new();
+                    List<TeamAreaPathConfig> allTeamAreaPathConfig = new ();
                     ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving Area Paths for {team.name}");
                     string teamAreaPathsJson = await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"{team.name}/_apis/work/teamsettings/teamfieldvalues?api-version=7.0", programOptions.Token);
 
@@ -258,7 +258,7 @@ public class Program
 
             if (!programOptions.SkipCommits)
             {
-                List<Commit> allCommits = new();
+                List<Commit> allCommits = new ();
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch.Replace("refs/heads/", string.Empty) : programOptions.Branch;
@@ -342,7 +342,7 @@ public class Program
                 ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Writing {allCommits.Count} commits for {projectName} to {programOptions.OutputFile}", ConsoleColor.Green);
                 WriteToFile(sb, firstProject);
 
-                allCommits = new();
+                allCommits = new ();
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true))
                 {
                     try
@@ -405,7 +405,7 @@ public class Program
 
             if (!programOptions.SkipPushes)
             {
-                List<Push> allPushes = new();
+                List<Push> allPushes = new ();
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : $"refs/heads/{programOptions.Branch}";
@@ -448,7 +448,7 @@ public class Program
 
             if (!Convert.ToBoolean(programOptions.SkipBuilds))
             {
-                List<Build> allBuildsToIterate = new();
+                List<Build> allBuildsToIterate = new ();
                 ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"Retrieving {programOptions.BuildCount} most recent Builds from {projectName}");
                 Builds buildsToIterate = JsonSerializer.Deserialize<Builds>(await HttpHelper.InvokeRestCallAsync(httpClientFactory.CreateClient(), projectUrl, $"_apis/build/builds/?$top=5000&maxBuildsPerDefinition=1&minTime={programOptions.FromDate}&api-version=7.0", programOptions.Token));
                 ConsoleHelper.ConsoleWrite(programOptions.Verbose, $"\tRetrieved {buildsToIterate.value.Count} distinct build definition runs");
@@ -521,7 +521,7 @@ public class Program
 
             if (!programOptions.SkipPullRequests)
             {
-                List<PullRequest> allPullRequests = new();
+                List<PullRequest> allPullRequests = new ();
                 foreach (var repo in repositories.value.Where(r => r.defaultBranch != null && r.isDisabled != true))
                 {
                     string branchToScan = string.IsNullOrEmpty(programOptions.Branch) ? repo.defaultBranch : programOptions.Branch;
